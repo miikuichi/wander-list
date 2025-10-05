@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}PisoHeroes | Home Dashboard{% endblock %}
+
+{% block content %}
+<main class="container-fluid flex-grow-1 dashboard-content"> 
+    
+    <h1 class="dashboard-title">Home Dashboard</h1>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4 col-md-6">
+            <div class="card daily-allowance-card h-100">
+                <div class="card-body">
+                    <h5 class="card-header d-flex justify-content-between align-items-center">
+                        Daily Allowance <i class="fas fa-calendar-alt text-muted"></i>
+                    </h5>
+                    <p class="text-muted mb-1">Your financial snapshot today</p>
+                    <h2 class="total-amount mb-0">Total: $500.00</h2>
+                    <p class="spent-remaining mb-0">Spent: $120.50</p>
+                    <p class="spent-remaining fs-5 fw-bold text-success">Remaining: $379.50</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-header d-flex justify-content-between align-items-center">
+                        Budget Usage <i class="fas fa-chart-line text-muted"></i>
+                    </h5>
+                    <p class="text-muted mb-3">Spending breakdown by category</p>
+                    <div class="chart-bar-container">
+                        <div class="chart-bar bg-primary" style="height: 80%;"></div>
+                        <div class="chart-bar bg-info" style="height: 60%;"></div>
+                        <div class="chart-bar bg-light-grey" style="height: 30%;"></div>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-color bg-primary"></div> Food
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-color bg-info"></div> Entertainment
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-color bg-light-grey"></div> Others
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-12">
+            <div class="card quick-actions-card h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-header mb-3">Quick Actions</h5>
+                    <button class="btn btn-success btn-lg"><i class="fas fa-plus me-2"></i> Log Expense</button>
+                    <button class="btn btn-outline-secondary btn-lg"><i class="fas fa-piggy-bank me-2"></i> Add Savings Goal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="savings-goals-section">
+        <div class="header">
+            <h2>Savings Goals Overview</h2>
+            <i class="fas fa-redo text-muted"></i>
+        </div>
+        <p class="text-muted mb-4">Keep track of your progress towards financial dreams.</p>
+
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="card goal-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">New Laptop</h5>
+                        <p class="amounts mb-1">$350.00 / $1000.00</p>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" role="progressbar" style="width: 35%;" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="percentage text-muted">35% Complete</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="card goal-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Weekend Trip</h5>
+                        <p class="amounts mb-1">$150.00 / $500.00</p>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" role="progressbar" style="width: 30%;" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="percentage text-muted">30% Complete</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6">
+                <div class="card goal-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Emergency Fund</h5>
+                        <p class="amounts mb-1">$800.00 / $1000.00</p>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" role="progressbar" style="width: 80%;" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="percentage text-muted">80% Complete</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-end mt-4">
+            <a href="#" class="btn btn-link text-decoration-none">View All Goals <i class="fas fa-arrow-right ms-2"></i></a>
+        </div>
+    </div>
+</main>
+{% endblock %}
