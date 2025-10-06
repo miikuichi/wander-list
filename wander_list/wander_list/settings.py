@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'login.apps.LoginConfig',
     'core.apps.CoreConfig',
+    'budget_alerts',
 ]
 
 MIDDLEWARE = [
