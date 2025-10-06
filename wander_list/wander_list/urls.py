@@ -27,4 +27,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('login.urls')),
     path('core/', include('core.urls')), # <-- This line includes the URLs from your new core app
+    path('budget-alerts/', include('budget_alerts.urls')),
 ]
