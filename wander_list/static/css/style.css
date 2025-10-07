@@ -188,6 +188,12 @@ body {
     border-left-color: var(--primary-color);
     font-weight: 600;
 }
+/* Example CSS that would be needed to make the link green */
+.sidebar-wrapper .nav-link.active {
+    background-color: #e6f7ff; /* Light background color */
+    color: #008000 !important; /* Green text color */
+    border-left: 4px solid #008000; /* Optional: Green left border for emphasis */
+}
 .sidebar .nav-link i {
     margin-right: 15px;
     width: 20px;

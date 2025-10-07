@@ -1,14 +1,27 @@
 <div class="sidebar d-flex flex-column">
     <div class="sidebar-header">
-        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDBDMTguNiAwIDI0IDUuNCAyNCAxMkMyNCAxOC42IDE4LjYgMjQgMTIgMjRDNS40IDI0IDAgMTguNiAwIDEyQzAgNS40IDUuNCAwIDEyIDBaTTEyIDYuMkM5LjcgNi4yIDcuOCA4LjEgNy44IDEwLjRDMTAuMSAxMC40IDEyIDEyLjMgMTIgMTQuNEMxMiAxMi4zIDEzLjkgMTAuNCAxNi4yIDEwLjRDMTMuOSAxMC40IDEyIDguNSAxMiA2LjJaIiBmaWxsPSIjNENVOTY2Ii8+Cjwvc3ZnPg==" alt="PisoHeroes Logo" class="logo-icon">
+        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDBDMTguNiAwIDI0IDUuNCAyNCAxMkMyNCAxOC42IDE4LjYgMjQgMTIgMjRDNS40IDI0IDAgMTguNiAwIDEyQzAgNS40IDUuNCAwIDEyIDBaTTEyIDYuMkM5LjcgNi4yIDcuOCA4LjEgNy44IDEwLjRDMTAuMSAxMC40IDEyIDEyLjMgMTIgMTQuNEMxMiAxMi4z IDEzLjkgMTAuNCAxNi4yIDEwLjRDMTMuOSAxMC40IDEyIDguNSAxMiA2LjJaIiBmaWxsPSIjNENVOTY2Ii8+Cjwvc3ZnPg==" alt="PisoHeroes Logo" class="logo-icon">
         <span class="app-name">PisoHeroes</span>
     </div>
     <nav class="nav flex-column mt-4">
-        <a class="nav-link active" href="#"><i class="fas fa-home"></i> Home</a>
+        
+        {% url 'alerts_page' as budget_alerts_url %}
+        {% url 'dashboard' as dashboard_url %}
+
+        <a class="nav-link {% if request.path|urlencode == dashboard_url|urlencode%}active{% endif %}" href="{{ dashboard_url }}"><i class="fas fa-home"></i> Home</a>
+        
         <a class="nav-link" href="#"><i class="fas fa-money-bill-wave"></i> Expenses</a>
-        <a class="nav-link" href="{% url 'alerts_page' %}"><i class="fas fa-bell"></i> Budget Alerts</a>
+        
+        <a class="nav-link {% if request.path|urlencode == budget_alerts_url|urlencode %}active{% endif %}" 
+           href="{{ budget_alerts_url }}">
+            <i class="fas fa-bell"></i> Budget Alerts
+        </a>
+        
         <a class="nav-link" href="#"><i class="fas fa-coins"></i> Savings Goals</a>
+        
         <a class="nav-link" href="#"><i class="fas fa-chart-bar"></i> Visual Reports</a>
+        
         <a class="nav-link" href="#"><i class="fas fa-sync-alt"></i> Data Backup & Sync</a>
+        
     </nav>
 </div>
