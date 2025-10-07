@@ -1,8 +1,9 @@
 <nav class="navbar navbar-expand-lg bg-light fixed-top">
     <div class="container-fluid">
-        <a class="navbar-brand d-none d-lg-block" href="#"></a>
+        <a class="navbar-brand d-none d-lg-block" href="#"> PisoHeroes</a>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                {% if user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link active" aria-current="page" href="#">Dashboard</a>
                 </li>
@@ -18,12 +19,16 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#">Settings</a>
                 </li>
+                {% endif %}
             </ul>
+            {% if user.is_authenticated %}
             <form class="d-flex me-3" role="search">
                 <input class="form-control me-2" type="search" placeholder="Search expenses or goals..." aria-label="Search">
                 <button class="btn btn-outline-secondary d-none d-md-block" type="submit"><i class="fas fa-search"></i></button>
             </form>
+            {% endif %}
             <ul class="navbar-nav d-flex align-items-center">
+                {% if user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link" href="#"><i class="fas fa-bell"></i></a>
                 </li>
@@ -39,9 +44,14 @@
                         <li><a class="dropdown-item" href="#">Profile</a></li>
                         <li><a class="dropdown-item" href="#">Settings</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#">Logout</a></li>
+                        <li><a class="dropdown-item" href="{% url 'login:logout' %}">Logout</a></li>
                     </ul>
                 </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link btn btn-primary text-white" href="{% url 'login:login_page' %}">Login</a>
+                </li>
+                {% endif %}
             </ul>
         </div>
     </div>
