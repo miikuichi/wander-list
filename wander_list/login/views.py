@@ -6,6 +6,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import logout # <--- IMPORT THIS
+
 
 
 def register(request):
@@ -25,7 +27,7 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             # Redirect to a success page after login
-            return redirect('home')
+            return redirect('dashboard')
     else:
         form = AuthenticationForm()
 
@@ -34,3 +36,11 @@ def login_view(request):
     }
     return render(request, 'login/login.html', context)
 
+def logout_view(request):
+    """Logs out the user and redirects to the login page."""
+    
+    # Clears the user's session and removes their authentication cookie
+    logout(request) 
+    
+    # Redirect to the login page after logging out
+    return redirect('login:login_page') 
