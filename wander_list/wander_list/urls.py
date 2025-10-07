@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-
+from django.views.generic import RedirectView
 
 # wander_list/urls.py
 
@@ -25,7 +25,10 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('login.urls')),
-    path('core/', include('core.urls')), # <-- This line includes the URLs from your new core app
+    path('login/', include('login.urls')),
+    path('dashboard/', include('dashboard.urls')), 
     path('budget-alerts/', include('budget_alerts.urls')),
+    
+    #Redirect the root path (http://127.0.0.1:8000/) to /dashboard/
+    path('', RedirectView.as_view(url='/dashboard/', permanent=True)), # <--- NEW LINE
 ]
