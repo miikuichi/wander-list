@@ -7,10 +7,11 @@
         
         {% url 'alerts_page' as budget_alerts_url %}
         {% url 'dashboard' as dashboard_url %}
+        {% url 'expenses' as expenses_url %}
 
         <a class="nav-link {% if request.path|urlencode == dashboard_url|urlencode%}active{% endif %}" href="{{ dashboard_url }}"><i class="fas fa-home"></i> Home</a>
         
-        <a class="nav-link" href="#"><i class="fas fa-money-bill-wave"></i> Expenses</a>
+        <a class="nav-link {% if request.path|urlencode == expenses_url|urlencode%}active{% endif %}" href="{{ expenses_url }}"><i class="fas fa-money-bill-wave"></i> Expenses</a>
         
         <a class="nav-link {% if request.path|urlencode == budget_alerts_url|urlencode %}active{% endif %}" 
            href="{{ budget_alerts_url }}">
