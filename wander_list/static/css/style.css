@@ -405,3 +405,131 @@ body {
     color: var(--primary-color);
 }
 /*-----------------------------------------------------------------------------------------------*/
+
+/*-----------------------------------------------------------------------------------------------*/
+/* --- EXPENSES PAGE SPECIFIC STYLES (New Code Block) --- */
+
+/* App Container (for overall layout) */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Page Content (Overriding/Adjusting Main Content Wrapper) */
+.page-content {
+    flex-grow: 1; /* Allow content to fill space */
+    padding: var(--content-padding-v); /* Use your existing variable for vertical spacing */
+    padding-top: calc(var(--header-height) + var(--alert-visible-height) + 1rem); /* Adjust for fixed navbar/alert */
+}
+
+.page-content h1 {
+    font-size: 1.8em;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.content-panels {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Log Expense card wider than Recent Expenses */
+    gap: 30px;
+    align-items: start;
+}
+
+/* Log Expense Card */
+.log-expense-card .card-subtitle {
+    color: var(--light-text-color);
+    margin-bottom: 25px;
+    font-size: 0.95em;
+}
+
+/* Form Styles (Adjusting existing form styles) */
+.expense-form .form-group {
+    margin-bottom: 20px;
+}
+
+.expense-form .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 0.95em;
+}
+
+.input-with-icon {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.input-with-icon span {
+    background-color: var(--secondary-color);
+    padding: 10px 12px;
+    border-right: 1px solid var(--border-color);
+    color: var(--light-text-color);
+}
+
+.input-with-icon input {
+    border: none;
+    flex-grow: 1;
+    padding: 10px 12px;
+    outline: none;
+    background: #fff; /* Match card background */
+}
+
+/* Existing Input/Select/Textarea styles will apply, but ensure they don't override the `input-with-icon` */
+
+.expense-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+/* Recent Expenses Card */
+.expense-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.expense-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px dotted var(--border-color);
+    font-size: 0.9em;
+}
+
+.expense-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.expense-category {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.expense-date {
+    color: var(--light-text-color);
+    text-align: right;
+    margin-right: 15px;
+}
+
+.expense-amount {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+/* Social Footer (You already have a general `.footer` style, use that) */
+
+/*--------------------------------------------------------------------------------
