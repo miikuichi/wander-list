@@ -16,6 +16,9 @@ def register(request):
         if form.is_valid():
             form.save()
             return redirect('login:login_page') # Redirect to the login page
+        else:
+            # THIS IS THE CRUCIAL LINE FOR DEBUGGING:
+            print("FORM ERRORS:", form.errors)
     else:
         form = UserCreationForm()
     return render(request, 'login/register.html', {'form': form})
