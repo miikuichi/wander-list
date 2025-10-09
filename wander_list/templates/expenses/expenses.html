@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}PisoHeroes | Log Expense{% endblock %}
+
+{% block content %}
+<main class="container-fluid flex-grow-1 dashboard-content"> 
+    
+    <h1 class="dashboard-title">Log Expense</h1> 
+
+    <div class="row g-4 mb-4 content-panels">
+        
+        <div class="col-lg-8 col-md-12">
+            <div class="card log-expense-card h-100">
+                <div class="card-body">
+                    <h2>Log New Expense</h2>
+                    <p class="card-subtitle">Quickly add and categorize your daily expenses to keep track of your spending.</p>
+
+                    <form class="expense-form">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="expenseAmount">Expense Amount</label>
+                                    <div class="input-with-icon">
+                                        <span>$</span>
+                                        <input type="number" id="expenseAmount" value="50.00" step="0.01" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="category">Category</label>
+                                    <select id="category" class="form-select" required>
+                                        <option value="" disabled selected>Select a category</option>
+                                        <option>Food</option>
+                                        <option>Transport</option>
+                                        <option>Entertainment</option>
+                                        <option>School Supplies</option>
+                                        <option>Leisure</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <label for="expenseDate">Expense Date</label>
+                            <input type="date" id="expenseDate" value="2025-09-20" class="form-control" required>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <label for="notes">Notes (Optional)</label>
+                            <textarea id="notes" placeholder="e.g., Lunch with friends at the campus cafeteria." class="form-control"></textarea>
+                        </div>
+
+                        <div class="form-actions d-flex justify-content-end gap-3 mt-4">
+                            <button type="button" class="btn btn-outline-secondary">Clear Form</button>
+                            <button type="submit" class="btn btn-success">Add Expense</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-12">
+            <div class="card recent-expenses-card h-100">
+                <div class="card-body">
+                    <h2 class="card-header mb-3">Recent Expenses</h2>
+                    
+                    <div class="expense-list">
+                        <div class="expense-item d-flex justify-content-between py-2 border-bottom">
+                            <span class="expense-category fw-bold">Food</span>
+                            <span class="expense-date text-muted">Jul 20, 2024</span>
+                            <span class="expense-amount text-danger fw-semibold">-$12.50</span>
+                        </div>
+                        
+                        <div class="expense-item d-flex justify-content-between py-2 border-bottom">
+                            <span class="expense-category fw-bold">Transport</span>
+                            <span class="expense-date text-muted">Jul 19, 2024</span>
+                            <span class="expense-amount text-danger fw-semibold">-$3.20</span>
+                        </div>
+                        <div class="expense-item d-flex justify-content-between py-2 border-bottom">
+                            <span class="expense-category fw-bold">Entertainment</span>
+                            <span class="expense-date text-muted">Jul 19, 2024</span>
+                            <span class="expense-amount text-danger fw-semibold">-$25.00</span>
+                        </div>
+                        <div class="expense-item d-flex justify-content-between py-2 border-bottom">
+                            <span class="expense-category fw-bold">School Supplies</span>
+                            <span class="expense-date text-muted">Jul 18, 2024</span>
+                            <span class="expense-amount text-danger fw-semibold">-$8.99</span>
+                        </div>
+                        <div class="expense-item d-flex justify-content-between pt-2">
+                            <span class="expense-category fw-bold">Leisure</span>
+                            <span class="expense-date text-muted">Jul 17, 2024</span>
+                            <span class="expense-amount text-danger fw-semibold">-$15.75</span>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+{% endblock %}
