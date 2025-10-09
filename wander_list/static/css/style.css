@@ -6,9 +6,7 @@
     --border-color: #dee2e6;
     --sidebar-width: 250px;
     --header-height: 60px;
-    /* This new variable estimates the alert height for initial content spacing */
     --alert-visible-height: 50px; 
-    /* This variable defines the standard padding around your content */
     --content-padding-v: 2rem;
 }
 
@@ -58,6 +56,27 @@ body {
     min-height: 100vh; /* Ensure full height */
     overflow-x: hidden; /* Prevent horizontal scroll */
 }
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Reuse the clean, centered card look from the login page */
+.register-container,
+.login-container { /* Applying the styles to both classes */
+    background-color: #fff; /* White background for the card */
+    padding: 30px; /* Generous padding inside the card */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow */
+    max-width: 420px; /* Set a consistent width */
+    width: 90%; /* Responsive width for smaller screens */
+    margin: 60px auto; /* Center it horizontally and add space from the top */
+    text-align: center;
+}
+
+.register-container h1 {
+    font-size: 1.8em;
+    margin-bottom: 25px;
+    color: var(--text-color, #333); /* Use a dark color for the heading */
+}
+/*-----------------------------------------------------------------------------------------------*/
 
 /* --- Custom Scrollbar for Webkit Browsers --- */
 ::-webkit-scrollbar {
@@ -73,7 +92,7 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
-
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Header/Navbar */
 .navbar {
@@ -116,6 +135,7 @@ body {
     object-fit: cover;
     margin-left: 10px;
 }
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Alert */
 #alert-container {
@@ -135,6 +155,7 @@ body {
     margin-bottom: 1rem; 
     margin-top: 0 !important;
 }
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Sidebar */
 .sidebar {
@@ -188,6 +209,8 @@ body {
     border-left-color: var(--primary-color);
     font-weight: 600;
 }
+/*-----------------------------------------------------------------------------------------------*/
+
 /* Example CSS that would be needed to make the link green */
 .sidebar-wrapper .nav-link.active {
     background-color: #e6f7ff; /* Light background color */
@@ -199,7 +222,7 @@ body {
     width: 20px;
     text-align: center;
 }
-
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Main Content Wrapper */
 .main-content-wrapper {
@@ -214,6 +237,7 @@ body {
     margin-bottom: 2rem;
     color: var(--text-color);
 }
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Apply padding to the main content container to offset the fixed top navbar */
 .dashboard-content {
@@ -221,6 +245,8 @@ body {
     padding-left: var(--content-padding-h);
     padding-right: var(--content-padding-h);
 }
+/*-----------------------------------------------------------------------------------------------*/
+
 
 /* Dashboard Cards */
 .card {
@@ -244,6 +270,7 @@ body {
     border-top: none;
     padding-top: 0;
 }
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Specific Card Styles (Daily Allowance) */
 .daily-allowance-card {
@@ -263,6 +290,7 @@ body {
     font-size: 1.1rem;
     color: var(--light-text-color);
 }
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Budget Usage Card - Bar Chart (simplified with static divs) */
 .chart-bar-container {
@@ -302,7 +330,7 @@ body {
     border-radius: 3px;
     margin-right: 5px;
 }
-
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Quick Actions Card */
 .quick-actions-card .btn {
@@ -318,7 +346,7 @@ body {
     color: var(--text-color);
     border-color: var(--border-color);
 }
-
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Savings Goals Overview */
 .savings-goals-section {
@@ -352,7 +380,7 @@ body {
     color: var(--light-text-color);
     margin-top: 5px;
 }
-
+/*-----------------------------------------------------------------------------------------------*/
 
 /* Footer */
 .footer {
@@ -361,7 +389,7 @@ body {
     border-top: 1px solid var(--border-color);
     margin-top: auto;
     width: 100%;
-    margin-left: 10 px;
+    margin-left: 0 px;
 }
 .footer .nav-link {
     color: var(--light-text-color);
@@ -376,3 +404,4 @@ body {
 .footer .social-icons a:hover {
     color: var(--primary-color);
 }
+/*-----------------------------------------------------------------------------------------------*/
