@@ -26,7 +26,8 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', include('login.urls')),
-    path('dashboard/', include('dashboard.urls')), 
+    path('dashboard/', include('dashboard.urls')),
+    path('expenses/', include('expenses.urls')), 
     path('budget-alerts/', include('budget_alerts.urls')),
     
     #Redirect the root path (http://127.0.0.1:8000/) to /dashboard/

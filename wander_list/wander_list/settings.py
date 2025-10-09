@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'login.apps.LoginConfig',
     'dashboard.apps.DashboardConfig',
     'budget_alerts',
+    'expenses.apps.ExpensesConfig',
 ]
 
 MIDDLEWARE = [
