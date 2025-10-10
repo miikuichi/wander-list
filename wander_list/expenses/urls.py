@@ -6,3 +6,4 @@ from . import views
 urlpatterns = [
     path('', views.expenses_view, name='expenses'),
 ]
+
