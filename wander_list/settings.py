@@ -17,6 +17,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
+# Supabase configuration
+SUPABASE_URL = "https://miwckqsyomyxloyppsuj.supabase.co"
+SUPABASE_KEY = "sb_secret_DJgFyS62I1_yd2FEK-l4RA_uaCzW-Xu"
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
