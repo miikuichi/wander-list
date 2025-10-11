@@ -3,6 +3,10 @@ from django.shortcuts import render
 # Create your views here.
 
 from django.shortcuts import render, redirect
+from supabase import create_client, Client
+
+from django.conf import settings
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
@@ -38,6 +42,21 @@ def login_view(request):
         'form': form
     }
     return render(request, 'login/login.html', context)
+
+# Alternative: Supabase login
+def supabase_login_view(request):
+    banner = ""
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        user = supabase.table("users").select("id").eq("username", username).eq("password", password).execute()
+        if user.data:
+            banner = "Login successful!"
+            # You can redirect to dashboard or another page here
+            # return redirect('dashboard')
+        else:
+            banner = "Incorrect username or password."
+    return render(request, 'login/login.html', {"banner": banner})
 
 def logout_view(request):
     """Logs out the user and redirects to the login page."""

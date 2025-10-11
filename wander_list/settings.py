@@ -17,6 +17,10 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
+# Supabase configuration
+SUPABASE_URL = "https://miwckqsyomyxloyppsuj.supabase.co"
+SUPABASE_KEY = "sb_secret_DJgFyS62I1_yd2FEK-l4RA_uaCzW-Xu"
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -63,7 +67,7 @@ ROOT_URLCONF = 'wander_list.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-         'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
