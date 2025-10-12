@@ -87,7 +87,7 @@ WSGI_APPLICATION = 'wander_list.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.config(
-        # The 'default' argument provides a fallback (like SQLite) if DATABASE_URL is missing
+        default="sqlite:///db.sqlite3",# The 'default' argument provides a fallback (like SQLite) if DATABASE_URL is missing
         conn_max_age=600,  # persistent connections for performance
         ssl_require=True   # enforce SSL, as required by Supabase
     )
