@@ -48,9 +48,13 @@
                     </ul>
                 </li>
                 {% else %}
-                <li class="nav-item">
-                    <a class="nav-link btn btn-primary text-white" href="{% url 'login:login_page' %}">Login</a>
-                </li>
+                    {% with current_url_name=request.resolver_match.url_name %}
+                        {% if current_url_name != 'login_page' and current_url_name != 'register_page' %}
+                            <li class="nav-item">
+                                <a class="nav-link btn btn-primary text-white" href="{% url 'login:login_page' %}">Login</a>
+                            </li>
+                        {% endif %}
+                    {% endwith %}
                 {% endif %}
             </ul>
         </div>

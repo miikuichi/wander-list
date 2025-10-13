@@ -229,7 +229,7 @@ body {
     margin-left: var(--sidebar-width);
     margin-top: var(--header-height);
     flex-grow: 1;
-    padding: 110 ;
+    padding: 0; /* reset to sensible default; specific pages control padding */
 }
 .dashboard-title {
     font-size: 1.8rem;
@@ -389,7 +389,15 @@ body {
     border-top: 1px solid var(--border-color);
     margin-top: auto;
     width: 100%;
-    margin-left: 0 px;
+    margin-left: 0;
+}
+
+/* When rendering auth pages (no sidebar), remove left offset so footer spans full width */
+.main-content-wrapper.auth {
+    margin-left: 0; /* no sidebar on auth pages */
+}
+.main-content-wrapper.auth .navbar {
+    padding-left: 1rem; /* keep navbar comfortable on small auth layout */
 }
 .footer .nav-link {
     color: var(--light-text-color);
