@@ -1,0 +1,543 @@
+:root {
+    --primary-color: #34c54a; /* Green for success/primary actions */
+    --secondary-color: #f8f9fa; /* Light background for cards/sections */
+    --text-color: #333;
+    --light-text-color: #6c757d; /* Muted text */
+    --border-color: #dee2e6;
+    --sidebar-width: 250px;
+    --header-height: 60px;
+    --alert-visible-height: 50px; 
+    --content-padding-v: 2rem;
+}
+
+/* static/css/login.css */
+
+.login-container {
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+    margin: 50px auto;
+    text-align: center;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    box-sizing: border-box;
+}
+
+.btn {
+    background-color: #007bff;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+#page-content-wrapper {
+    /* ADDED: Reserves space for the fixed elements above it. */
+    /* You must calculate this value: (var(--header-height) + Alert Height) */
+    padding-top: 1%;
+    padding-left: var(--content-padding-v);
+    padding-right: var(--content-padding-v);
+}
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background-color: #f0f2f5; /* Lighter grey background for the whole page */
+    color: var(--text-color);
+    margin: 0;
+    display: flex; /* Flexbox for sidebar and main content */
+    min-height: 100vh; /* Ensure full height */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Reuse the clean, centered card look from the login page */
+.register-container,
+.login-container { /* Applying the styles to both classes */
+    background-color: #fff; /* White background for the card */
+    padding: 30px; /* Generous padding inside the card */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow */
+    max-width: 420px; /* Set a consistent width */
+    width: 90%; /* Responsive width for smaller screens */
+    margin: 60px auto; /* Center it horizontally and add space from the top */
+    text-align: center;
+}
+
+.register-container h1 {
+    font-size: 1.8em;
+    margin-bottom: 25px;
+    color: var(--text-color, #333); /* Use a dark color for the heading */
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* --- Custom Scrollbar for Webkit Browsers --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Header/Navbar */
+.navbar {
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+    height: var(--header-height);
+    z-index: 1000;
+    position: fixed;
+    width: 100%;
+    left: 0;
+    top: 0;
+    padding-left: var(--sidebar-width);
+}
+.navbar-brand {
+    font-weight: bold;
+    color: var(--primary-color) !important;
+    font-size: 1.5rem;
+}
+.navbar .nav-link {
+    color: var(--light-text-color);
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+}
+.navbar .nav-link.active, .navbar .nav-link:hover {
+    color: var(--primary-color);
+}
+.navbar .form-control {
+    border-radius: 20px;
+    padding-left: 1rem;
+    border: 1px solid var(--border-color);
+    background-color: #f0f2f5;
+}
+.navbar-nav .nav-item .nav-link {
+    padding: 0.5rem 1rem;
+}
+.navbar-profile-img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-left: 10px;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Alert */
+#alert-container {
+    /* ADDED: Fixed positioning to make it stick below the navbar */
+    position: fixed;
+    top: var(--header-height); /* Positions it right under the navbar */
+    left: var(--sidebar-width); /* Positions it right next to the sidebar */
+    width: calc(100% - var(--sidebar-width)); /* Calculates width for the main area */
+    z-index: 990; /* Keeps it above the content */
+    
+    padding: 0 var(--content-padding-v); /* Matches the horizontal padding of the content */
+    margin-bottom: 0; /* REMOVED 1rem margin-bottom as it's fixed */
+}
+#alert-container .alert {
+    width: 100%;
+    /* ADDED: A small bottom margin to separate the alert bar from the content that starts below it */
+    margin-bottom: 1rem; 
+    margin-top: 0 !important;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: #fff;
+    padding-top: var(--header-height);
+    box-shadow: 2px 0 5px rgba(0,0,0,.05);
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 999;
+}
+.sidebar-header {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    height: var(--header-height);
+    position: fixed;
+    width: var(--sidebar-width);
+    background-color: #fff;
+    z-index: 1001;
+    top: 0;
+    left: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+}
+.sidebar-header .logo-icon {
+    width: 35px;
+    height: 35px;
+    margin-right: 10px;
+}
+.sidebar-header .app-name {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+.sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem 1.5rem;
+    color: var(--light-text-color);
+    transition: background-color 0.2s, color 0.2s;
+    border-left: 4px solid transparent;
+}
+.sidebar .nav-link:hover {
+    background-color: #e9ecef;
+    color: var(--text-color);
+}
+.sidebar .nav-link.active {
+    background-color: #e9ecef;
+    color: var(--primary-color);
+    border-left-color: var(--primary-color);
+    font-weight: 600;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Example CSS that would be needed to make the link green */
+.sidebar-wrapper .nav-link.active {
+    background-color: #e6f7ff; /* Light background color */
+    color: #008000 !important; /* Green text color */
+    border-left: 4px solid #008000; /* Optional: Green left border for emphasis */
+}
+.sidebar .nav-link i {
+    margin-right: 15px;
+    width: 20px;
+    text-align: center;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Main Content Wrapper */
+.main-content-wrapper {
+    margin-left: var(--sidebar-width);
+    margin-top: var(--header-height);
+    flex-grow: 1;
+    padding: 0; /* reset to sensible default; specific pages control padding */
+}
+.dashboard-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    color: var(--text-color);
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Apply padding to the main content container to offset the fixed top navbar */
+.dashboard-content {
+    /* Use the CSS variable for consistency and correct spacing */
+    padding-left: var(--content-padding-h);
+    padding-right: var(--content-padding-h);
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+
+/* Dashboard Cards */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
+    background-color: #fff;
+}
+.card-header {
+    background-color: transparent;
+    border-bottom: none;
+    font-weight: 600;
+    color: var(--text-color);
+    padding-bottom: 0.5rem;
+}
+.card-body {
+    padding: 1.5rem;
+}
+.card-footer {
+    background-color: transparent;
+    border-top: none;
+    padding-top: 0;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Specific Card Styles (Daily Allowance) */
+.daily-allowance-card {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23e6f7e6" /></svg>');
+    background-repeat: no-repeat;
+    background-position: right -20px bottom -20px;
+    background-size: 120px;
+    position: relative;
+    overflow: hidden;
+}
+.daily-allowance-card .total-amount {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+.daily-allowance-card .spent-remaining {
+    font-size: 1.1rem;
+    color: var(--light-text-color);
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Budget Usage Card - Bar Chart (simplified with static divs) */
+.chart-bar-container {
+    display: flex;
+    align-items: flex-end;
+    height: 120px;
+    gap: 10px;
+    margin-top: 1rem;
+}
+.chart-bar {
+    width: 30px;
+    background-color: #6edc6e;
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    position: relative;
+}
+.chart-bar.bg-primary { background-color: #6edc6e !important; }
+.chart-bar.bg-info { background-color: #89cff0 !important; }
+.chart-bar.bg-light-grey { background-color: #e0e0e0 !important; }
+.chart-legend {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1rem;
+    font-size: 0.9em;
+    color: var(--light-text-color);
+}
+.chart-legend-item {
+    display: flex;
+    align-items: center;
+}
+.chart-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 5px;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Quick Actions Card */
+.quick-actions-card .btn {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+}
+.quick-actions-card .btn-success {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.quick-actions-card .btn-outline-secondary {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Savings Goals Overview */
+.savings-goals-section {
+    margin-top: 3rem;
+}
+.savings-goals-section .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+.savings-goals-section .header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+.savings-goals-section .goal-card .progress {
+    height: 8px;
+    background-color: #e0e0e0;
+}
+.savings-goals-section .goal-card .progress-bar {
+    background-color: var(--primary-color);
+}
+.savings-goals-section .goal-card .amounts {
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.savings-goals-section .goal-card .percentage {
+    font-size: 0.9em;
+    color: var(--light-text-color);
+    margin-top: 5px;
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/* Footer */
+.footer {
+    background-color: #fff;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+    width: 100%;
+    margin-left: 0;
+}
+
+/* When rendering auth pages (no sidebar), remove left offset so footer spans full width */
+.main-content-wrapper.auth {
+    margin-left: 0; /* no sidebar on auth pages */
+}
+.main-content-wrapper.auth .navbar {
+    padding-left: 1rem; /* keep navbar comfortable on small auth layout */
+}
+.footer .nav-link {
+    color: var(--light-text-color);
+    padding: 0 0.75rem;
+    font-size: 0.9em;
+}
+.footer .social-icons a {
+    color: var(--light-text-color);
+    margin-left: 15px;
+    font-size: 1.1em;
+}
+.footer .social-icons a:hover {
+    color: var(--primary-color);
+}
+/*-----------------------------------------------------------------------------------------------*/
+
+/*-----------------------------------------------------------------------------------------------*/
+/* --- EXPENSES PAGE SPECIFIC STYLES (New Code Block) --- */
+
+/* App Container (for overall layout) */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Page Content (Overriding/Adjusting Main Content Wrapper) */
+.page-content {
+    flex-grow: 1; /* Allow content to fill space */
+    padding: var(--content-padding-v); /* Use your existing variable for vertical spacing */
+    padding-top: calc(var(--header-height) + var(--alert-visible-height) + 1rem); /* Adjust for fixed navbar/alert */
+}
+
+.page-content h1 {
+    font-size: 1.8em;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.content-panels {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Log Expense card wider than Recent Expenses */
+    gap: 30px;
+    align-items: start;
+}
+
+/* Log Expense Card */
+.log-expense-card .card-subtitle {
+    color: var(--light-text-color);
+    margin-bottom: 25px;
+    font-size: 0.95em;
+}
+
+/* Form Styles (Adjusting existing form styles) */
+.expense-form .form-group {
+    margin-bottom: 20px;
+}
+
+.expense-form .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 0.95em;
+}
+
+.input-with-icon {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.input-with-icon span {
+    background-color: var(--secondary-color);
+    padding: 10px 12px;
+    border-right: 1px solid var(--border-color);
+    color: var(--light-text-color);
+}
+
+.input-with-icon input {
+    border: none;
+    flex-grow: 1;
+    padding: 10px 12px;
+    outline: none;
+    background: #fff; /* Match card background */
+}
+
+/* Existing Input/Select/Textarea styles will apply, but ensure they don't override the `input-with-icon` */
+
+.expense-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+/* Recent Expenses Card */
+.expense-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.expense-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px dotted var(--border-color);
+    font-size: 0.9em;
+}
+
+.expense-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.expense-category {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.expense-date {
+    color: var(--light-text-color);
+    text-align: right;
+    margin-right: 15px;
+}
+
+.expense-amount {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+/* Social Footer (You already have a general `.footer` style, use that) */
+
+/*--------------------------------------------------------------------------------
