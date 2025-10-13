@@ -30,6 +30,6 @@ urlpatterns = [
     path('expenses/', include('expenses.urls')), 
     path('budget-alerts/', include('budget_alerts.urls')),
     
-    #Redirect the root path (http://127.0.0.1:8000/) to /dashboard/
-    path('', RedirectView.as_view(url='/dashboard/', permanent=True)), # <--- NEW LINE
+    #Redirect the root path (http://127.0.0.1:8000/) to /login/
+    path('', RedirectView.as_view(url='/login/', permanent=True)), # <--- NEW LINE
 ]
