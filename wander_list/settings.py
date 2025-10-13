@@ -83,13 +83,13 @@ WSGI_APPLICATION = 'wander_list.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Supabase PostgreSQL connection
 DATABASES = {
-    "default": dj_database_url.config(
-        # The 'default' argument provides a fallback (like SQLite) if DATABASE_URL is missing
-        conn_max_age=600,  # persistent connections for performance
-        ssl_require=True   # enforce SSL, as required by Supabase
+    "default": dj_database_url.parse(
+        "postgresql://postgres.vljvowrrcpligfokjpuk:rh6ROk3vpFwdzPsx@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require",
+        conn_max_age=600,
+        ssl_require=True
     )
 }
 
