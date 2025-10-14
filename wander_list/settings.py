@@ -18,8 +18,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Supabase configuration
-SUPABASE_URL = "https://miwckqsyomyxloyppsuj.supabase.co"
-SUPABASE_KEY = "sb_secret_DJgFyS62I1_yd2FEK-l4RA_uaCzW-Xu"
+# Read Supabase configuration from environment. Set these values in a local
+# `.env` file during development (python-dotenv is already used above).
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Optional service role key (server-only operations). Keep this secret.
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -60,6 +64,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'login.middleware.SupabaseAuthMiddleware',  # Add our custom middleware
 ]
 
 ROOT_URLCONF = 'wander_list.urls'
@@ -84,14 +89,17 @@ WSGI_APPLICATION = 'wander_list.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///db.sqlite3")
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default="sqlite:///db.sqlite3",# The 'default' argument provides a fallback (like SQLite) if DATABASE_URL is missing
-        conn_max_age=600,  # persistent connections for performance
-        ssl_require=True   # enforce SSL, as required by Supabase
+    "default": dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
     )
 }
+
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
 
 
 # Password validation
@@ -138,3 +146,16 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}

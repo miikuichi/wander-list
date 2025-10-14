@@ -1,5 +1,21 @@
-<div class="alert alert-warning alert-dismissible fade show mb-0" role="alert">
-    <i class="fas fa-exclamation-triangle me-2"></i>
-    This is a dashboard warning. Your subscription will expire in 5 days.
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
+<!-- Dynamic Dash Warning -->
+ 
+{% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'warning' }} alert-dismissible fade show mb-0" role="alert">
+        {% if message.tags == 'error' %}
+          <i class="fas fa-exclamation-triangle me-2"></i>
+        {% elif message.tags == 'success' %}
+          <i class="fas fa-check-circle me-2"></i>
+        {% elif message.tags == 'info' %}
+          <i class="fas fa-info-circle me-2"></i>
+        {% elif message.tags == 'warning' %}
+          <i class="fas fa-exclamation-circle me-2"></i>
+        {% endif %}
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

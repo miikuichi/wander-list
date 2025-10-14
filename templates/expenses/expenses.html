@@ -16,41 +16,54 @@
 
                     <form method="post" action="" class="expense-form">
                         {% csrf_token %}
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                        {% endif %}
 
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    {{ form.amount.label_tag }}
+                                    <label for="amount">Amount:</label>
                                     <div class="input-with-icon">
                                         <span>$</span>
-                                        {{ form.amount }}
+                                        <input type="number" 
+                                               id="amount" 
+                                               name="amount" 
+                                               step="0.01" 
+                                               min="0" 
+                                               class="form-control" 
+                                               required>
                                     </div>
-                                    {{ form.amount.errors }}
                                 </div>
                             </div>
 
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    {{ form.category.label_tag }}
-                                    {{ form.category }}
-                                    {{ form.category.errors }}
+                                    <label for="category">Category:</label>
+                                    <select id="category" name="category" class="form-control" required>
+                                        <option value="">-- Select Category --</option>
+                                        {% for cat in categories %}
+                                            <option value="{{ cat }}">{{ cat }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group mt-3">
-                            {{ form.date.label_tag }}
-                            {{ form.date }}
-                            {{ form.date.errors }}
+                            <label for="date">Date:</label>
+                            <input type="date" 
+                                   id="date" 
+                                   name="date" 
+                                   class="form-control" 
+                                   value="{% now 'Y-m-d' %}" 
+                                   required>
                         </div>
 
                         <div class="form-group mt-3">
-                            {{ form.notes.label_tag }}
-                            {{ form.notes }}
-                            {{ form.notes.errors }}
+                            <label for="notes">Notes (optional):</label>
+                            <textarea id="notes" 
+                                      name="notes" 
+                                      class="form-control" 
+                                      rows="3" 
+                                      placeholder="Add any additional details..."></textarea>
                         </div>
 
                         <div class="form-actions d-flex justify-content-end gap-3 mt-4">
@@ -67,15 +80,16 @@
                     
                     <div class="expense-list">
                         {% for expense in recent_expenses %}
-                            <div class="expense-item d-flex justify-content-between py-2 border-bottom">
-                                <span class="expense-category fw-bold">{{ expense.category.name }}</span>
-                                <span class="expense-date text-muted">{{ expense.date|date:"M d, Y" }}</span>
+                            <div class="expense-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                                <span class="expense-category fw-bold">{{ expense.category }}</span>
+                                <span class="expense-date text-muted">{{ expense.date }}</span>
                                 <span class="expense-amount text-danger fw-semibold">- ${{ expense.amount }}</span>
                             </div>
                         {% empty %}
-                            <div class="text-muted">No expenses yet.</div>
+                            <div class="text-muted">No expenses yet. Start tracking your spending!</div>
                         {% endfor %}
                     </div>
+                
                 </div>
             </div>
     </div>

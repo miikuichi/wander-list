@@ -28,7 +28,7 @@
             </form>
             {% endif %}
             <ul class="navbar-nav d-flex align-items-center">
-                {% if user.is_authenticated %}
+                {% if request.user_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link" href="#"><i class="fas fa-bell"></i></a>
                 </li>
@@ -38,7 +38,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <img src="https://via.placeholder.com/35" alt="User Profile" class="navbar-profile-img">
-                        <span class="d-none d-lg-block ms-2">John Doe</span>
+                        <span class="d-none d-lg-block ms-2">{{ request.username }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li><a class="dropdown-item" href="#">Profile</a></li>
