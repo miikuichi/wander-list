@@ -15,27 +15,58 @@
 
                         <div class="mb-3">
                             <label for="id_username" class="form-label">Username</label>
-                            <input type="text" id="id_username" name="username" class="form-control" placeholder="Enter username">
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.username.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             <div class="form-text">150 characters or fewer. Letters, digits and @/_/+/./- only.</div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="id_password1" class="form-label">Password</label>
-                            <input type="password" id="id_password1" name="password1" class="form-control" placeholder="Enter password">
+                            <label for="id_email" class="form-label">Email</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.email.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_password" class="form-label">Password</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.password.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">
                             <ul class="password-requirements small text-muted ps-3">
-                                <li>Your password can't be too similar to your other personal information.</li>
                                 <li>Your password must contain at least 8 characters.</li>
-                                <li>Your password can't be a commonly used password.</li>
-                                <li>Your password can't be entirely numeric.</li>
+                                <li>Use a combination of letters, numbers, and symbols for better security.</li>
                             </ul>
                         </div>
 
                         <div class="mb-3">
-                            <label for="id_password2" class="form-label">Password confirmation</label>
-                            <input type="password" id="id_password2" name="password2" class="form-control" placeholder="Confirm password">
+                            <label for="id_password_confirm" class="form-label">Password confirmation</label>
+                            {{ form.password_confirm }}
+                            {% if form.password_confirm.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.password_confirm.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             <div class="form-text">Enter the same password as before, for verification.</div>
                         </div>
 

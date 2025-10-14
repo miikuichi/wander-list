@@ -1,44 +1,77 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .forms import ExpenseForm
-from .models import Expense, Category # 💡 FIX: Added missing imports
+from django.contrib import messages
+from supabase_service import get_service_client
+from datetime import datetime
+import logging
 
-# Assuming expense_list and expenses_view are also in this file:
+logger = logging.getLogger(__name__)
 
-@login_required
+# Hardcoded categories as requested
+CATEGORIES = ["Food", "Transport", "Leisure", "Bills", "School Supplies", "Shopping", "Healthcare", "Entertainment", "Other"]
+
+
 def expenses_view(request):
     """
-    Displays the expenses page and handles new expense submissions.
-    GET: Renders the page with the form and recent expenses.
-    POST: Validates and saves the Expense then redirects (PRG) back to this view.
+    Displays the expenses page and handles new expense submissions using Supabase.
+    GET: Renders the page with recent expenses from Supabase.
+    POST: Validates and saves the Expense to Supabase then redirects (PRG).
     """
-    # Build categories for the form and sidebar
-    categories = Category.objects.filter(user=request.user).order_by('name')
-
-    # If the user has no categories yet, create some sensible defaults (same behavior as budget_alerts.alerts_page)
-    if not categories.exists():
-        default_names = ["Food", "Transport", "Leisure", "Bills", "School Supplies"]
-        for n in default_names:
-            Category.objects.get_or_create(user=request.user, name=n)
-        categories = Category.objects.filter(user=request.user).order_by('name')
-
+    user_id = request.session.get('user_id')
+    
+    if not user_id:
+        return redirect('login:login_page')
+    
     if request.method == 'POST':
-        form = ExpenseForm(request.POST, user=request.user)
-        if form.is_valid():
-            new_expense = form.save(commit=False)
-            new_expense.user = request.user
-            new_expense.save()
-            # Redirect after successful POST to avoid double submissions
+        # Handle new expense submission
+        try:
+            amount = request.POST.get('amount')
+            category = request.POST.get('category')
+            date = request.POST.get('date')
+            notes = request.POST.get('notes', '')
+            
+            # Validate inputs
+            if not amount or not category or not date:
+                messages.error(request, "⚠️ Amount, category, and date are required.")
+                return redirect('expenses')
+            
+            # Insert into Supabase
+            supabase = get_service_client()
+            supabase.table('expenses').insert({
+                'user_id': user_id,
+                'amount': float(amount),
+                'category': category,
+                'date': date,
+                'notes': notes
+            }).execute()
+            
+            messages.success(request, "✅ Expense added successfully!")
             return redirect('expenses')
-    else:
-        form = ExpenseForm(user=request.user)
-
-    # Recent expenses shown on the page
-    recent_expenses = Expense.objects.filter(user=request.user).order_by('-date', '-created_at')[:10]
-
+            
+        except Exception as e:
+            logger.error(f"Failed to add expense: {e}")
+            messages.error(request, f"⚠️ Failed to add expense: {str(e)}")
+            return redirect('expenses')
+    
+    # GET: Fetch expenses for this user from Supabase
+    try:
+        supabase = get_service_client()
+        response = supabase.table('expenses')\
+            .select('*')\
+            .eq('user_id', user_id)\
+            .order('date', desc=True)\
+            .order('created_at', desc=True)\
+            .limit(50)\
+            .execute()
+        
+        recent_expenses = response.data if response.data else []
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch expenses: {e}")
+        recent_expenses = []
+        messages.error(request, "⚠️ Failed to load expenses from database.")
+    
     context = {
-        'form': form,
-        'categories': categories,
+        'categories': CATEGORIES,
         'recent_expenses': recent_expenses,
     }
     return render(request, 'expenses/expenses.html', context)
