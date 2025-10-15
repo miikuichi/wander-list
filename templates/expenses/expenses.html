@@ -9,89 +9,111 @@
 
     <div class="g-4 mb-4 content-panels">
         
-            <div class="card log-expense-card h-100">
-                <div class="card-body">
-                    <h2>Log New Expense</h2>
-                    <p class="card-subtitle">Quickly add and categorize your daily expenses to keep track of your spending.</p>
+        <!-- Log New Expense Card -->
+        <div class="card log-expense-card h-100">
+            <div class="card-body">
+                <h2>Log New Expense</h2>
+                <p class="card-subtitle">Quickly add and categorize your daily expenses to keep track of your spending.</p>
 
-                    <form method="post" action="" class="expense-form">
-                        {% csrf_token %}
+                <form method="post" action="" class="expense-form">
+                    {% csrf_token %}
 
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="amount">Amount:</label>
-                                    <div class="input-with-icon">
-                                        <span>$</span>
-                                        <input type="number" 
-                                               id="amount" 
-                                               name="amount" 
-                                               step="0.01" 
-                                               min="0" 
-                                               class="form-control" 
-                                               required>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="category">Category:</label>
-                                    <select id="category" name="category" class="form-control" required>
-                                        <option value="">-- Select Category --</option>
-                                        {% for cat in categories %}
-                                            <option value="{{ cat }}">{{ cat }}</option>
-                                        {% endfor %}
-                                    </select>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="amount">Amount:</label>
+                                <div class="input-with-icon">
+                                    <span>₱</span>
+                                    <input type="number" 
+                                            id="amount" 
+                                            name="amount" 
+                                            step="0.01" 
+                                            min="0" 
+                                            class="form-control" 
+                                            required>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group mt-3">
-                            <label for="date">Date:</label>
-                            <input type="date" 
-                                   id="date" 
-                                   name="date" 
-                                   class="form-control" 
-                                   value="{% now 'Y-m-d' %}" 
-                                   required>
-                        </div>
-
-                        <div class="form-group mt-3">
-                            <label for="notes">Notes (optional):</label>
-                            <textarea id="notes" 
-                                      name="notes" 
-                                      class="form-control" 
-                                      rows="3" 
-                                      placeholder="Add any additional details..."></textarea>
-                        </div>
-
-                        <div class="form-actions d-flex justify-content-end gap-3 mt-4">
-                            <button type="reset" class="btn btn-outline-secondary">Clear Form</button>
-                            <button type="submit" class="btn btn-success">Add Expense</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card recent-expenses-card h-100">
-                <div class="card-body">
-                    <h2 class="card-header mb-3">Recent Expenses</h2>
-                    
-                    <div class="expense-list">
-                        {% for expense in recent_expenses %}
-                            <div class="expense-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                                <span class="expense-category fw-bold">{{ expense.category }}</span>
-                                <span class="expense-date text-muted">{{ expense.date }}</span>
-                                <span class="expense-amount text-danger fw-semibold">- ${{ expense.amount }}</span>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="category">Category:</label>
+                                <select id="category" name="category" class="form-control" required>
+                                    <option value="">-- Select Category --</option>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat }}">{{ cat }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
-                        {% empty %}
-                            <div class="text-muted">No expenses yet. Start tracking your spending!</div>
-                        {% endfor %}
+                        </div>
                     </div>
-                
-                </div>
+
+                    <div class="form-group mt-3">
+                        <label for="date">Date:</label>
+                        <input type="date" 
+                                id="date" 
+                                name="date" 
+                                class="form-control" 
+                                value="{% now 'Y-m-d' %}" 
+                                required>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label for="notes">Notes (optional):</label>
+                        <textarea id="notes" 
+                                    name="notes" 
+                                    class="form-control" 
+                                    rows="3" 
+                                    placeholder="Add any additional details..."></textarea>
+                    </div>
+
+                    <div class="form-actions d-flex justify-content-end gap-3 mt-4">
+                        <button type="reset" class="btn btn-outline-secondary">Clear Form</button>
+                        <button type="submit" class="btn btn-success">Add Expense</button>
+                    </div>
+                </form>
             </div>
+        </div>
+        <!-- End Log New Expense Card -->
+
+        <!-- Recent Expenses Card (MODIFIED) -->
+        <div class="card recent-expenses-card h-100">
+            <div class="card-body">
+                <h2 class="card-header mb-3">Recent Expenses</h2>
+                
+                <div class="expense-list">
+                    {% for expense in recent_expenses %}
+                        <!-- Expense Item: Now includes a delete button -->
+                        <div class="expense-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                            
+                            <!-- Expense Details -->
+                            <div class="d-flex flex-column flex-grow-1 me-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="expense-category fw-bold">{{ expense.category }}</span>
+                                    <span class="expense-amount text-danger fw-semibold">- ₱{{ expense.amount }}</span>
+                                </div>
+                                <small class="text-muted mt-1">{{ expense.date }} &ndash; {{ expense.notes|default:"No notes" }}</small>
+                            </div>
+
+                            <!-- Delete Form -->
+                            <form method="post" action="{% url 'delete_expense' id=expense.id %}" class="d-inline-block ms-3">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger p-1" title="Delete Expense">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                      <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    {% empty %}
+                        <div class="text-muted">No expenses yet. Start tracking your spending!</div>
+                    {% endfor %}
+                </div>
+            
+            </div>
+        </div>
+        <!-- End Recent Expenses Card -->
     </div>
 </main>
 {% endblock %}

@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.views.generic.edit import DeleteView
 from supabase_service import get_service_client
 from datetime import datetime, timezone
 import logging
@@ -82,3 +83,36 @@ def expenses_view(request):
         'recent_expenses': recent_expenses,
     }
     return render(request, 'expenses/expenses.html', context)
+
+
+
+def delete_expense(request, id):
+    """
+    Delete a single expense record from the 'expenses' table in Supabase.
+    This function should be called via a POST request from the template (e.g., a delete button).
+    """
+    user_id = request.session.get('user_id')
+    
+    if not user_id:
+        # Redirect if the user is not logged in
+        return redirect('login:login_page')
+    
+    try:
+        supabase = get_service_client()
+        
+        # --- Supabase Deletion Logic ---
+        # The key is to chain .delete() and .execute()
+        supabase.table('expenses')\
+            .delete()\
+            .eq('id', id)\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        messages.success(request, "✅ Expense deleted successfully!")
+        
+    except Exception as e:
+        logger.error(f"Failed to delete expense ID {id}: {e}")
+        messages.error(request, f"⚠️ Failed to delete expense: {str(e)}")
+    
+    # Always redirect back to the main expenses view after the operation
+    return redirect('expenses')
