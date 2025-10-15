@@ -85,7 +85,6 @@ def expenses_view(request):
     return render(request, 'expenses/expenses.html', context)
 
 
-
 def delete_expense(request, id):
     """
     Delete a single expense record from the 'expenses' table in Supabase.
@@ -116,3 +115,57 @@ def delete_expense(request, id):
     
     # Always redirect back to the main expenses view after the operation
     return redirect('expenses')
+
+
+def edit_expense(request, id):
+    """
+    Update an existing expense in Supabase using the POST-Redirect-GET pattern,
+    modeled after the structure of the budget_alerts edit function.
+    """
+    user_id = request.session.get('user_id')
+    
+    if not user_id:
+        return redirect('login:login_page')
+    
+    if request.method == "POST":
+        try:
+            # 1. Get expense data from POST request
+            amount = request.POST.get('amount')
+            category = request.POST.get('category')
+            date = request.POST.get('date')
+            notes = request.POST.get('notes', '')
+            
+            # 2. Validate
+            if not amount or not category or not date:
+                messages.error(request, "⚠️ Amount, category, and date are required.")
+                return redirect("expenses") # Redirect to main expense page
+            
+            # 3. Update in Supabase
+            supabase = get_service_client()
+            now = datetime.now(timezone.utc).isoformat()
+            
+            update_payload = {
+                'amount': float(amount),
+                'category': category,
+                'date': date,
+                'notes': notes,
+                'updated_at': now
+            }
+            
+            supabase.table('expenses')\
+                .update(update_payload)\
+                .eq('id', id)\
+                .eq('user_id', user_id)\
+                .execute()
+            
+            messages.success(request, "✅ Expense updated successfully!")
+            return redirect("expenses") # Redirect to main expense page
+            
+        except Exception as e:
+            logger.error(f"Failed to update expense ID {id}: {e}")
+            messages.error(request, f"⚠️ Failed to update expense: {str(e)}")
+            return redirect("expenses") # Redirect to main expense page
+    
+    # If a GET request is made to this URL (e.g., direct navigation), redirect to the main list.
+    return redirect("expenses")
+

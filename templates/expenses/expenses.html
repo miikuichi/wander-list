@@ -61,10 +61,10 @@
                     <div class="form-group mt-3">
                         <label for="notes">Notes (optional):</label>
                         <textarea id="notes" 
-                                    name="notes" 
-                                    class="form-control" 
-                                    rows="3" 
-                                    placeholder="Add any additional details..."></textarea>
+                                name="notes" 
+                                class="form-control" 
+                                rows="3" 
+                                placeholder="Add any additional details..."></textarea>
                     </div>
 
                     <div class="form-actions d-flex justify-content-end gap-3 mt-4">
@@ -76,15 +76,20 @@
         </div>
         <!-- End Log New Expense Card -->
 
-        <!-- Recent Expenses Card (MODIFIED) -->
+        <!-- Recent Expenses Card -->
         <div class="card recent-expenses-card h-100">
             <div class="card-body">
                 <h2 class="card-header mb-3">Recent Expenses</h2>
                 
                 <div class="expense-list">
                     {% for expense in recent_expenses %}
-                        <!-- Expense Item: Now includes a delete button -->
-                        <div class="expense-item d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <!-- Expense Item: Added data attributes for easy access in JavaScript -->
+                        <div class="expense-item d-flex justify-content-between align-items-center py-2 border-bottom"
+                            data-id="{{ expense.id }}" 
+                            data-amount="{{ expense.amount }}" 
+                            data-category="{{ expense.category }}" 
+                            data-date="{{ expense.date }}" 
+                            data-notes="{{ expense.notes|default:"" }}">
                             
                             <!-- Expense Details -->
                             <div class="d-flex flex-column flex-grow-1 me-3">
@@ -95,16 +100,30 @@
                                 <small class="text-muted mt-1">{{ expense.date }} &ndash; {{ expense.notes|default:"No notes" }}</small>
                             </div>
 
-                            <!-- Delete Form -->
-                            <form method="post" action="{% url 'delete_expense' id=expense.id %}" class="d-inline-block ms-3">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger p-1" title="Delete Expense">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                      <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                            <!-- Action Buttons (Edit and Delete) -->
+                            <div class="d-flex gap-2">
+                                
+                                <!-- NEW: Edit Button - Triggers the modal -->
+                                <button type="button" class="btn btn-sm btn-outline-info p-1 edit-expense-btn" title="Edit Expense" 
+                                        data-bs-toggle="modal" data-bs-target="#editExpenseModal">
+                                    <!-- Pencil Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                                      <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.105l-4 1a.5.5 0 0 1-.65-.65l1-4a.5.5 0 0 1 .105-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 7.24l-1.993.811.811-1.993 4.29-4.29 1.121 1.12-4.29 4.29z"/>
                                     </svg>
                                 </button>
-                            </form>
+                                
+                                <!-- Delete Form -->
+                                <form method="post" action="{% url 'delete_expense' id=expense.id %}" class="d-inline-block">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger p-1" title="Delete Expense">
+                                        <!-- Trash Icon -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                          <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                          <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     {% empty %}
                         <div class="text-muted">No expenses yet. Start tracking your spending!</div>
@@ -116,4 +135,97 @@
         <!-- End Recent Expenses Card -->
     </div>
 </main>
+
+<!-- NEW: Edit Expense Modal -->
+<div class="modal fade" id="editExpenseModal" tabindex="-1" aria-labelledby="editExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editExpenseModalLabel">Edit Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="editExpenseForm" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="text-muted small">Editing Expense ID: <span id="modal-expense-id" class="fw-bold"></span></p>
+
+                    <div class="form-group mb-3">
+                        <label for="modal-amount">Amount:</label>
+                        <div class="input-with-icon">
+                            <span>₱</span>
+                            <input type="number" id="modal-amount" name="amount" step="0.01" min="0" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="modal-category">Category:</label>
+                        <select id="modal-category" name="category" class="form-control" required>
+                            <option value="">-- Select Category --</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="modal-date">Date:</label>
+                        <input type="date" id="modal-date" name="date" class="form-control" required>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="modal-notes">Notes (optional):</label>
+                        <textarea id="modal-notes" name="notes" class="form-control" rows="3" placeholder="Add any additional details..."></textarea>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- NEW: JavaScript to handle modal population -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all edit buttons and attach event listener
+    document.querySelectorAll('.edit-expense-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            // Get the parent expense item element that holds the data
+            const item = btn.closest('.expense-item'); 
+            
+            // Extract data using the preferred dataset method
+            const id = item.dataset.id;
+            const amount = item.dataset.amount;
+            const category = item.dataset.category;
+            const date = item.dataset.date;
+            const notes = item.dataset.notes;
+
+            // Get modal fields and form (defining them once here makes the code cleaner)
+            const editForm = document.getElementById('editExpenseForm');
+            const expenseIdDisplay = document.getElementById('modal-expense-id');
+            const modalAmount = document.getElementById('modal-amount');
+            const modalCategory = document.getElementById('modal-category');
+            const modalDate = document.getElementById('modal-date');
+            const modalNotes = document.getElementById('modal-notes');
+            
+            // 1. Populate the form fields
+            expenseIdDisplay.textContent = id;
+            modalAmount.value = amount;
+            // Handle select element population
+            modalCategory.value = category; 
+            modalDate.value = date;
+            modalNotes.value = notes;
+            
+            // 2. Set the form action URL dynamically
+            // NOTE: Replace 'expenses/edit/0' with your actual base URL if it's different.
+            const baseUrlTemplate = '/expenses/edit/0/'; // <-- ADDED THE TRAILING SLASH HERE!
+            editForm.action = baseUrlTemplate.replace('0', id);
+        });
+    });
+});
+</script>
+
 {% endblock %}
