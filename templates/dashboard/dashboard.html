@@ -7,6 +7,36 @@
     
     <h1 class="dashboard-title">Home Dashboard</h1>
 
+    <!-- Budget Alerts Section -->
+    {% if triggered_alerts %}
+    <div class="budget-alerts-section mb-4">
+        <h5 class="mb-3">
+            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+            Budget Alerts ({{ triggered_alerts|length }})
+        </h5>
+        <div class="row g-3">
+            {% for alert in triggered_alerts %}
+            <div class="col-lg-6 col-md-12">
+                <div class="alert alert-{{ alert.severity }} alert-dismissible fade show mb-0" role="alert">
+                    <strong>{{ alert.category }}</strong> budget alert! 
+                    <br>
+                    <small>
+                        You've spent <strong>₱{{ alert.spent|floatformat:2 }}</strong> out of <strong>₱{{ alert.limit|floatformat:2 }}</strong> 
+                        (<strong>{{ alert.percent_spent }}%</strong>)
+                        {% if alert.percent_spent >= 100 %}
+                        - Budget exceeded!
+                        {% else %}
+                        - Threshold reached ({{ alert.threshold }}%)
+                        {% endif %}
+                    </small>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row g-4 mb-4">
         <div class="col-lg-4 col-md-6">
             <div class="card daily-allowance-card h-100">

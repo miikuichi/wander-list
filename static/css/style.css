@@ -540,4 +540,40 @@ body {
 
 /* Social Footer (You already have a general `.footer` style, use that) */
 
+/* Budget Alerts Section */
+.budget-alerts-section {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.budget-alerts-section .alert {
+    border-left: 4px solid;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.budget-alerts-section .alert-warning {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+.budget-alerts-section .alert-danger {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.budget-alerts-section h5 {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
 /*--------------------------------------------------------------------------------
