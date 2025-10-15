@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from supabase_service import get_service_client
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,16 +34,22 @@ def expenses_view(request):
                 messages.error(request, "⚠️ Amount, category, and date are required.")
                 return redirect('expenses')
             
-            # Insert into Supabase
+            # Insert into Supabase with explicit timestamps
             supabase = get_service_client()
-            supabase.table('expenses').insert({
+            now = datetime.now(timezone.utc).isoformat()
+            
+            result = supabase.table('expenses').insert({
                 'user_id': user_id,
                 'amount': float(amount),
                 'category': category,
                 'date': date,
-                'notes': notes
+                'notes': notes,
+                'created_at': now,
+                'updated_at': now
             }).execute()
             
+            # Log success for debugging
+            logger.info(f"Expense added: user_id={user_id}, amount={amount}, category={category}, result={result.data}")
             messages.success(request, "✅ Expense added successfully!")
             return redirect('expenses')
             
@@ -64,11 +70,12 @@ def expenses_view(request):
             .execute()
         
         recent_expenses = response.data if response.data else []
+        logger.info(f"Fetched {len(recent_expenses)} expenses for user_id={user_id}")
         
     except Exception as e:
-        logger.error(f"Failed to fetch expenses: {e}")
+        logger.error(f"Failed to fetch expenses for user_id={user_id}: {e}", exc_info=True)
         recent_expenses = []
-        messages.error(request, "⚠️ Failed to load expenses from database.")
+        messages.warning(request, f"⚠️ Failed to load expenses: {str(e)}")
     
     context = {
         'categories': CATEGORIES,
