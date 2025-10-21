@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'budget_alerts'
+
 urlpatterns = [
     path("", views.alerts_page, name="alerts_page"),
     path("edit/<int:id>/", views.edit_alert, name="edit_alert"),  # Edit route

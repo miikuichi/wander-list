@@ -8,6 +8,7 @@
         {% url 'alerts_page' as budget_alerts_url %}
         {% url 'dashboard' as dashboard_url %}
         {% url 'expenses' as expenses_url %}
+        {% url 'savings_goals:goals' as savings_goals_url %}
 
         <a class="nav-link {% if request.path|urlencode == dashboard_url|urlencode%}active{% endif %}" href="{{ dashboard_url }}"><i class="fas fa-home"></i> Home</a>
         
@@ -18,7 +19,10 @@
             <i class="fas fa-bell"></i> Budget Alerts
         </a>
         
-        <a class="nav-link" href="#"><i class="fas fa-coins"></i> Savings Goals</a>
+        <a class="nav-link {% if request.path|urlencode == savings_goals_url|urlencode %}active{% endif %}" 
+           href="{{ savings_goals_url }}">
+            <i class="fas fa-piggy-bank"></i> Savings Goals
+        </a>
         
         <a class="nav-link" href="#"><i class="fas fa-chart-bar"></i> Visual Reports</a>
         
