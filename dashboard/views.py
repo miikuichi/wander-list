@@ -1,96 +1,244 @@
 from django.shortcuts import render, redirect
-from supabase_service import get_service_client
+from django.db.models import Sum, Q
+from django.utils import timezone
 from datetime import datetime, timedelta
 from decimal import Decimal
+from supabase_service import get_service_client
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 def dashboard_view(request):
-    """Display dashboard for authenticated users with budget alerts.
+    """Display dashboard for authenticated users with real data from database.
     
-    Authentication is handled by the SupabaseAuthMiddleware.
+    Shows:
+    - Daily allowance and spending summary
+    - Budget usage by category
+    - Active savings goals
+    - Recent expenses
+    - Budget alerts
     """
     user_id = request.session.get('user_id')
     
     if not user_id:
+        logger.warning("Unauthenticated user attempted to access dashboard")
         return redirect('login:login_page')
     
     username = request.session.get('username', 'User')
     email = request.session.get('email', '')
     
-    # Calculate triggered budget alerts
-    triggered_alerts = []
-    
     try:
+        # Import models and constants
+        from expenses.views import CATEGORIES
+        from savings_goals.models import SavingsGoal
+        
+        # Get Supabase client
         supabase = get_service_client()
         
-        # 1. Fetch active budget alerts with category info
-        alerts_response = supabase.table('budget_alerts_budgetalert')\
-            .select('*, budget_alerts_category(*)')\
-            .eq('user_id', user_id)\
-            .eq('active', True)\
-            .execute()
+        # Get today's date
+        today = timezone.now().date()
+        today_str = today.isoformat()
         
-        budget_alerts = alerts_response.data if alerts_response.data else []
+        # Calculate date ranges
+        start_of_month = today.replace(day=1).isoformat()
+        start_of_week = (today - timedelta(days=today.weekday())).isoformat()
         
-        # 2. Get current month's date range
-        today = datetime.now()
-        first_day_of_month = today.replace(day=1).date()
-        
-        # 3. Fetch all expenses for current month
-        expenses_response = supabase.table('expenses')\
-            .select('category, amount')\
-            .eq('user_id', user_id)\
-            .gte('date', str(first_day_of_month))\
-            .execute()
-        
-        expenses = expenses_response.data if expenses_response.data else []
-        
-        # 4. Calculate spending by category
-        spending_by_category = {}
-        for expense in expenses:
-            category = expense['category']
-            amount = Decimal(str(expense['amount']))
-            spending_by_category[category] = spending_by_category.get(category, Decimal('0')) + amount
-        
-        # 5. Check each budget alert against actual spending
-        for alert in budget_alerts:
-            category_name = alert['budget_alerts_category']['name']
-            amount_limit = Decimal(str(alert['amount_limit']))
-            threshold_percent = alert['threshold_percent']
-            notify_dashboard = alert['notify_dashboard']
+        # ===== DAILY ALLOWANCE SECTION =====
+        try:
+            # Get today's expenses from Supabase
+            today_result = supabase.table('expenses')\
+                .select('amount')\
+                .eq('user_id', user_id)\
+                .eq('date', today_str)\
+                .execute()
             
-            # Get spending for this category
-            spent = spending_by_category.get(category_name, Decimal('0'))
+            today_expenses = sum(Decimal(str(e['amount'])) for e in today_result.data) if today_result.data else Decimal('0.00')
             
-            # Calculate percentage spent
-            if amount_limit > 0:
-                percent_spent = (spent / amount_limit) * 100
-            else:
-                percent_spent = 0
+            # Get this week's expenses
+            week_result = supabase.table('expenses')\
+                .select('amount')\
+                .eq('user_id', user_id)\
+                .gte('date', start_of_week)\
+                .execute()
             
-            # Check if threshold is exceeded and dashboard notifications are enabled
-            if notify_dashboard and percent_spent >= threshold_percent:
-                triggered_alerts.append({
-                    'category': category_name,
-                    'spent': float(spent),
-                    'limit': float(amount_limit),
-                    'percent_spent': round(percent_spent, 1),
-                    'threshold': threshold_percent,
-                    'severity': 'danger' if percent_spent >= 100 else 'warning'
+            week_expenses = sum(Decimal(str(e['amount'])) for e in week_result.data) if week_result.data else Decimal('0.00')
+            
+            # Get this month's expenses
+            month_result = supabase.table('expenses')\
+                .select('amount')\
+                .eq('user_id', user_id)\
+                .gte('date', start_of_month)\
+                .execute()
+            
+            month_expenses = sum(Decimal(str(e['amount'])) for e in month_result.data) if month_result.data else Decimal('0.00')
+            
+            # Placeholder daily allowance (you can add a user preferences table later)
+            daily_allowance = Decimal('500.00')
+            remaining_today = daily_allowance - today_expenses
+            
+            logger.info(f"Dashboard: user {user_id} - Today: ₱{today_expenses}, Week: ₱{week_expenses}, Month: ₱{month_expenses}")
+            
+        except Exception as e:
+            logger.error(f"Error calculating expenses for user {user_id}: {e}", exc_info=True)
+            today_expenses = week_expenses = month_expenses = Decimal('0.00')
+            daily_allowance = Decimal('500.00')
+            remaining_today = daily_allowance
+        
+        # ===== BUDGET USAGE BY CATEGORY =====
+        try:
+            category_spending = []
+            
+            # Get all month expenses from Supabase
+            month_expenses_data = supabase.table('expenses')\
+                .select('category, amount')\
+                .eq('user_id', user_id)\
+                .gte('date', start_of_month)\
+                .execute()
+            
+            # Calculate spending per category
+            category_totals = {}
+            if month_expenses_data.data:
+                for expense in month_expenses_data.data:
+                    cat = expense.get('category', 'Other')
+                    amount = Decimal(str(expense.get('amount', 0)))
+                    category_totals[cat] = category_totals.get(cat, Decimal('0.00')) + amount
+            
+            # Get budget alerts from Supabase
+            budget_alerts_data = supabase.table('budget_alerts')\
+                .select('category, amount_limit')\
+                .eq('user_id', user_id)\
+                .eq('active', True)\
+                .execute()
+            
+            budget_limits = {}
+            if budget_alerts_data.data:
+                for alert in budget_alerts_data.data:
+                    budget_limits[alert['category']] = Decimal(str(alert['amount_limit']))
+            
+            # Build category spending list
+            for category in CATEGORIES[:5]:  # Top 5 categories
+                spent = category_totals.get(category, Decimal('0.00'))
+                budget_limit = budget_limits.get(category, Decimal('1000.00'))
+                percentage = min((spent / budget_limit * 100) if budget_limit > 0 else 0, 100)
+                
+                category_spending.append({
+                    'name': category,
+                    'spent': spent,
+                    'budget': budget_limit,
+                    'percentage': round(float(percentage), 1)
                 })
+            
+            # Sort by spending amount
+            category_spending.sort(key=lambda x: x['spent'], reverse=True)
+            
+        except Exception as e:
+            logger.error(f"Error calculating category spending for user {user_id}: {e}", exc_info=True)
+            category_spending = []
         
-        logger.info(f"Dashboard: Found {len(triggered_alerts)} triggered alerts for user_id={user_id}")
+        # ===== SAVINGS GOALS =====
+        try:
+            active_goals = SavingsGoal.objects.filter(
+                user_id=user_id,
+                status='active'
+            ).order_by('-created_at')[:3]  # Top 3 active goals
+            
+            total_savings_target = SavingsGoal.objects.filter(
+                user_id=user_id,
+                status='active'
+            ).aggregate(total=Sum('target_amount'))['total'] or Decimal('0.00')
+            
+            total_savings_current = SavingsGoal.objects.filter(
+                user_id=user_id,
+                status='active'
+            ).aggregate(total=Sum('current_amount'))['total'] or Decimal('0.00')
+            
+        except Exception as e:
+            logger.error(f"Error fetching savings goals for user {user_id}: {e}", exc_info=True)
+            active_goals = []
+            total_savings_target = Decimal('0.00')
+            total_savings_current = Decimal('0.00')
+        
+        # ===== RECENT EXPENSES =====
+        try:
+            recent_result = supabase.table('expenses')\
+                .select('*')\
+                .eq('user_id', user_id)\
+                .order('date', desc=True)\
+                .order('created_at', desc=True)\
+                .limit(5)\
+                .execute()
+            
+            recent_expenses = recent_result.data if recent_result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching recent expenses for user {user_id}: {e}", exc_info=True)
+            recent_expenses = []
+        
+        # ===== BUDGET ALERTS =====
+        try:
+            triggered_alerts = []
+            
+            # Get active budget alerts from Supabase
+            alerts_result = supabase.table('budget_alerts')\
+                .select('*')\
+                .eq('user_id', user_id)\
+                .eq('active', True)\
+                .execute()
+            
+            if alerts_result.data:
+                for alert in alerts_result.data:
+                    category = alert['category']
+                    spent = category_totals.get(category, Decimal('0.00'))
+                    limit = Decimal(str(alert['amount_limit']))
+                    threshold_percent = alert['threshold_percent']
+                    threshold_amount = limit * (Decimal(threshold_percent) / 100)
+                    
+                    if spent >= threshold_amount:
+                        percentage = min((spent / limit * 100) if limit > 0 else 0, 100)
+                        triggered_alerts.append({
+                            'category': category,
+                            'spent': spent,
+                            'limit': limit,
+                            'percentage': round(float(percentage), 1),
+                            'threshold': threshold_percent
+                        })
+            
+        except Exception as e:
+            logger.error(f"Error checking budget alerts for user {user_id}: {e}", exc_info=True)
+            triggered_alerts = []
+        
+        context = {
+            'username': username,
+            'email': email,
+            'user_id': user_id,
+            # Daily allowance
+            'daily_allowance': daily_allowance,
+            'today_expenses': today_expenses,
+            'remaining_today': remaining_today,
+            'week_expenses': week_expenses,
+            'month_expenses': month_expenses,
+            # Budget usage
+            'category_spending': category_spending,
+            # Savings goals
+            'active_goals': active_goals,
+            'total_savings_target': total_savings_target,
+            'total_savings_current': total_savings_current,
+            # Recent activity
+            'recent_expenses': recent_expenses,
+            # Alerts
+            'triggered_alerts': triggered_alerts,
+        }
+        
+        logger.info(f"Dashboard loaded successfully for user {user_id}")
+        return render(request, 'dashboard/dashboard.html', context)
         
     except Exception as e:
-        logger.error(f"Failed to calculate budget alerts: {e}", exc_info=True)
-        # Don't block dashboard if alerts fail
-    
-    context = {
-        'username': username,
-        'email': email,
-        'user_id': user_id,
-        'triggered_alerts': triggered_alerts,
-    }
-    return render(request, 'dashboard/dashboard.html', context)
+        logger.error(f"Unexpected error loading dashboard for user {user_id}: {e}", exc_info=True)
+        # Return minimal context on error
+        context = {
+            'username': username,
+            'email': email,
+            'user_id': user_id,
+        }
+        return render(request, 'dashboard/dashboard.html', context)

@@ -1,0 +1,427 @@
+{% extends 'base.html' %}
+
+{% block title %}PisoHeroes | Savings Goals{% endblock %}
+
+{% block content %}
+<main class="container-fluid flex-grow-1 dashboard-content">
+    
+    <h1 class="dashboard-title">Savings Goals</h1>
+    <p class="text-muted mb-4">Track your progress towards your financial dreams and goals.</p>
+
+    <!-- Summary Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Active Goals</h6>
+                    <h2 class="text-primary">{{ active_goals.count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Target</h6>
+                    <h2 class="text-info">₱{{ total_target|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Saved</h6>
+                    <h2 class="text-success">₱{{ total_saved|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create New Goal Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="mb-3">Create New Savings Goal</h2>
+            <form method="post" action="{% url 'savings_goals:goals' %}" id="createGoalForm">
+                {% csrf_token %}
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% if form.name.help_text %}
+                                <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.target_amount.id_for_label }}" class="form-label">{{ form.target_amount.label }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₱</span>
+                                {{ form.target_amount }}
+                            </div>
+                            {% if form.target_amount.help_text %}
+                                <small class="form-text text-muted">{{ form.target_amount.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.target_date.id_for_label }}" class="form-label">{{ form.target_date.label }}</label>
+                            {{ form.target_date }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                    {{ form.description }}
+                </div>
+
+                <div class="form-actions d-flex justify-content-end gap-3 mt-4">
+                    <button type="reset" class="btn btn-outline-secondary">Clear Form</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>Create Goal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Goals -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="mb-4">Active Goals</h2>
+            
+            {% if active_goals %}
+                <div class="row g-4">
+                    {% for goal in active_goals %}
+                        <div class="col-lg-4 col-md-6">
+                            <div class="card goal-card h-100 {% if goal.is_complete %}border-success{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 class="card-title mb-0">{{ goal.name }}</h5>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <button class="dropdown-item edit-goal-btn" 
+                                                            data-goal-id="{{ goal.id }}"
+                                                            data-goal-name="{{ goal.name }}"
+                                                            data-goal-target="{{ goal.target_amount }}"
+                                                            data-goal-description="{{ goal.description }}"
+                                                            data-goal-date="{{ goal.target_date|date:'Y-m-d' }}">
+                                                        <i class="fas fa-edit me-2"></i>Edit
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <form method="post" action="{% url 'savings_goals:delete_goal' goal.id %}" 
+                                                          onsubmit="return confirm('Are you sure you want to delete this goal?');" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="fas fa-trash me-2"></i>Delete
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    {% if goal.description %}
+                                        <p class="text-muted small mb-3">{{ goal.description|truncatewords:15 }}</p>
+                                    {% endif %}
+
+                                    {% if goal.target_date %}
+                                        <p class="text-muted small mb-2">
+                                            <i class="fas fa-calendar me-1"></i>Target: {{ goal.target_date|date:"M d, Y" }}
+                                        </p>
+                                    {% endif %}
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="fw-bold">₱{{ goal.current_amount|floatformat:2 }}</span>
+                                            <span class="text-muted">₱{{ goal.target_amount|floatformat:2 }}</span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar {% if goal.is_complete %}bg-success{% else %}bg-primary{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ goal.progress_percentage }}%;" 
+                                                 aria-valuenow="{{ goal.progress_percentage }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                                {{ goal.progress_percentage }}%
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">₱{{ goal.remaining_amount|floatformat:2 }} remaining</small>
+                                    </div>
+
+                                    <div class="d-grid gap-2">
+                                        {% if goal.is_complete %}
+                                            <form method="post" action="{% url 'savings_goals:achieve_goal' goal.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success w-100">
+                                                    <i class="fas fa-trophy me-2"></i>Mark as Achieved
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <button class="btn btn-primary add-savings-btn" 
+                                                    data-goal-id="{{ goal.id }}"
+                                                    data-goal-name="{{ goal.name }}">
+                                                <i class="fas fa-plus-circle me-2"></i>Add Savings
+                                            </button>
+                                        {% endif %}
+                                        
+                                        <form method="post" action="{% url 'savings_goals:reset_goal' goal.id %}" 
+                                              onsubmit="return confirm('Reset this goal to ₱0.00?');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                                                <i class="fas fa-redo me-2"></i>Reset Progress
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-piggy-bank fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No active savings goals yet. Create your first goal above!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Completed Goals -->
+    {% if completed_goals %}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="mb-4">Completed Goals 🎉</h2>
+                
+                <div class="row g-4">
+                    {% for goal in completed_goals %}
+                        <div class="col-lg-4 col-md-6">
+                            <div class="card goal-card h-100 border-success">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 class="card-title mb-0">{{ goal.name }} ✓</h5>
+                                        <form method="post" action="{% url 'savings_goals:delete_goal' goal.id %}" 
+                                              onsubmit="return confirm('Delete this completed goal?');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    {% if goal.description %}
+                                        <p class="text-muted small mb-3">{{ goal.description|truncatewords:15 }}</p>
+                                    {% endif %}
+
+                                    <p class="text-success mb-2">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        Completed: {{ goal.completed_at|date:"M d, Y" }}
+                                    </p>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="fw-bold text-success">₱{{ goal.current_amount|floatformat:2 }}</span>
+                                            <span class="text-muted">₱{{ goal.target_amount|floatformat:2 }}</span>
+                                        </div>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success" 
+                                                 role="progressbar" 
+                                                 style="width: 100%;" 
+                                                 aria-valuenow="100" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                                100%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</main>
+
+<!-- Add Savings Modal -->
+<div class="modal fade" id="addSavingsModal" tabindex="-1" aria-labelledby="addSavingsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSavingsModalLabel">Add Savings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="addSavingsForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="mb-3">Adding savings to: <strong id="modal-goal-name"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label for="savings-amount" class="form-label">Amount to Add (₱)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₱</span>
+                            <input type="number" 
+                                   id="savings-amount" 
+                                   name="amount" 
+                                   class="form-control" 
+                                   step="0.01" 
+                                   min="0.01" 
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="savings-notes" class="form-label">Notes (Optional)</label>
+                        <textarea id="savings-notes" 
+                                  name="notes" 
+                                  class="form-control" 
+                                  rows="2" 
+                                  placeholder="e.g., Saved from allowance, Birthday money"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>Add Savings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Goal Modal -->
+<div class="modal fade" id="editGoalModal" tabindex="-1" aria-labelledby="editGoalModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editGoalModalLabel">Edit Savings Goal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="editGoalForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-goal-name" class="form-label">Goal Name</label>
+                        <input type="text" id="edit-goal-name" name="name" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-goal-target" class="form-label">Target Amount (₱)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₱</span>
+                            <input type="number" id="edit-goal-target" name="target_amount" class="form-control" step="0.01" min="0.01" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-goal-date" class="form-label">Target Date (Optional)</label>
+                        <input type="date" id="edit-goal-date" name="target_date" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-goal-description" class="form-label">Description (Optional)</label>
+                        <textarea id="edit-goal-description" name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add Savings Modal Handler
+document.querySelectorAll('.add-savings-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const goalId = this.dataset.goalId;
+        const goalName = this.dataset.goalName;
+        
+        document.getElementById('modal-goal-name').textContent = goalName;
+        document.getElementById('addSavingsForm').action = `/savings-goals/add-savings/${goalId}/`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('addSavingsModal'));
+        modal.show();
+    });
+});
+
+// Edit Goal Modal Handler
+document.querySelectorAll('.edit-goal-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const goalId = this.dataset.goalId;
+        const goalName = this.dataset.goalName;
+        const goalTarget = this.dataset.goalTarget;
+        const goalDescription = this.dataset.goalDescription;
+        const goalDate = this.dataset.goalDate;
+        
+        document.getElementById('edit-goal-name').value = goalName;
+        document.getElementById('edit-goal-target').value = goalTarget;
+        document.getElementById('edit-goal-description').value = goalDescription;
+        document.getElementById('edit-goal-date').value = goalDate !== 'None' ? goalDate : '';
+        document.getElementById('editGoalForm').action = `/savings-goals/edit/${goalId}/`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('editGoalModal'));
+        modal.show();
+    });
+});
+
+// Form Validation
+document.getElementById('createGoalForm').addEventListener('submit', function(e) {
+    const name = document.getElementById('{{ form.name.id_for_label }}').value.trim();
+    const targetAmount = parseFloat(document.getElementById('{{ form.target_amount.id_for_label }}').value);
+    
+    if (!name || name.length < 3) {
+        e.preventDefault();
+        alert('⚠️ Goal name must be at least 3 characters long.');
+        return false;
+    }
+    
+    if (isNaN(targetAmount) || targetAmount <= 0) {
+        e.preventDefault();
+        alert('⚠️ Please enter a valid target amount greater than zero.');
+        return false;
+    }
+    
+    if (targetAmount > 999999999.99) {
+        e.preventDefault();
+        alert('⚠️ Target amount is too large. Maximum is ₱999,999,999.99');
+        return false;
+    }
+});
+
+// Add Savings Form Validation
+document.getElementById('addSavingsForm').addEventListener('submit', function(e) {
+    const amount = parseFloat(document.getElementById('savings-amount').value);
+    
+    if (isNaN(amount) || amount <= 0) {
+        e.preventDefault();
+        alert('⚠️ Please enter a valid amount greater than zero.');
+        return false;
+    }
+    
+    if (amount > 999999999.99) {
+        e.preventDefault();
+        alert('⚠️ Amount is too large. Maximum is ₱999,999,999.99');
+        return false;
+    }
+});
+</script>
+
+{% endblock %}
