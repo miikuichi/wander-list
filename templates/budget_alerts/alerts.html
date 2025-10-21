@@ -109,7 +109,7 @@
               <tbody>
                 {% for a in alerts %}
                   <tr>
-                    <td>{{ a.category.name }}</td>
+                    <td>{{ a.budget_alerts_category.name }}</td>
                     <td>₱{{ a.amount_limit }}</td>
                     <td>{{ a.threshold_percent }}%</td>
                     <td>
@@ -129,7 +129,7 @@
                       <a href="#" class="btn btn-sm btn-outline-warning edit-btn"
                          data-id="{{ a.id }}"
                          data-amount="{{ a.amount_limit }}"
-                         data-category="{{ a.category.id }}"
+                         data-category="{{ a.category_id }}"
                          data-threshold="{{ a.threshold_percent }}"
                          data-notify-dashboard="{{ a.notify_dashboard }}"
                          data-notify-email="{{ a.notify_email }}"
