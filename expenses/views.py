@@ -137,36 +137,36 @@ def expenses_view(request):
             # Validation 1: Check required fields
             if not amount or not category or not date_str:
                 messages.error(request, "⚠️ Amount, category, and date are required.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # Validation 2: Check if amount is a valid number
             try:
                 amount_decimal = Decimal(amount)
             except (ValueError, TypeError):
                 messages.error(request, "⚠️ Amount must be a valid number.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # Validation 3: Check if amount is positive
             if amount_decimal <= 0:
                 messages.error(request, "⚠️ Amount must be greater than zero.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # Validation 4: Check if amount is reasonable (not too large)
             if amount_decimal > Decimal('999999999.99'):
                 messages.error(request, "⚠️ Amount is too large. Maximum is ₱999,999,999.99.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # Validation 5: Check if category is valid
             if category not in CATEGORIES:
                 messages.error(request, f"⚠️ Invalid category. Please select from: {', '.join(CATEGORIES)}.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # Validation 6: Check if date is valid format
             try:
                 expense_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 messages.error(request, "⚠️ Invalid date format. Please use YYYY-MM-DD.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # NEW VALIDATION 7: Check if expense is for today and would exceed daily allowance
             if expense_date == date.today():
@@ -177,7 +177,7 @@ def expenses_view(request):
                                  f"of ₱{allowance_info['remaining']:.2f}. "
                                  f"(Today's spending: ₱{allowance_info['today_spending']:.2f} / "
                                  f"₱{allowance_info['daily_allowance']:.2f})")
-                    return redirect('expenses:expenses')
+                    return redirect('expenses')
                 
                 # Warn if expense would use more than 80% of remaining allowance
                 if amount_decimal > (allowance_info['remaining'] * Decimal('0.8')):
@@ -198,7 +198,7 @@ def expenses_view(request):
                                  f"Current spending: ₱{budget_status['current_spending']:.2f} / "
                                  f"₱{budget_status['amount_limit']:.2f}. "
                                  f"Remaining: ₱{budget_status['remaining']:.2f}")
-                    return redirect('expenses:expenses')
+                    return redirect('expenses')
                 
                 # Warn if approaching threshold
                 new_percent = (proposed_total / budget_status['amount_limit'] * 100)
@@ -227,12 +227,12 @@ def expenses_view(request):
                        f"category={category}, date={date_str}")
             messages.success(request, f"✅ Expense of ₱{amount_decimal:.2f} added successfully!")
             
-            return redirect('expenses:expenses')
+            return redirect('expenses')
             
         except Exception as e:
             logger.error(f"Failed to add expense: {e}", exc_info=True)
             messages.error(request, f"⚠️ Failed to add expense: {str(e)}")
-            return redirect('expenses:expenses')
+            return redirect('expenses')
     
     # GET: Fetch expenses for this user from Supabase
     try:
@@ -293,12 +293,12 @@ def edit_expense_view(request, expense_id):
                 return JsonResponse(response.data)
             else:
                 messages.error(request, "⚠️ Expense not found or you don't have permission to edit it.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
                 
         except Exception as e:
             logger.error(f"Failed to fetch expense for edit: {e}", exc_info=True)
             messages.error(request, f"⚠️ Failed to fetch expense: {str(e)}")
-            return redirect('expenses:expenses')
+            return redirect('expenses')
     
     elif request.method == 'POST':
         # Update the expense
@@ -313,7 +313,7 @@ def edit_expense_view(request, expense_id):
             
             if not original.data:
                 messages.error(request, "⚠️ Expense not found or you don't have permission to edit it.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             original_data = original.data
             amount = request.POST.get('amount')
@@ -324,31 +324,31 @@ def edit_expense_view(request, expense_id):
             # Same validation as create
             if not amount or not category or not date_str:
                 messages.error(request, "⚠️ Amount, category, and date are required.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             try:
                 amount_decimal = Decimal(amount)
             except (ValueError, TypeError):
                 messages.error(request, "⚠️ Amount must be a valid number.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             if amount_decimal <= 0:
                 messages.error(request, "⚠️ Amount must be greater than zero.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             if amount_decimal > Decimal('999999999.99'):
                 messages.error(request, "⚠️ Amount is too large. Maximum is ₱999,999,999.99.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             if category not in CATEGORIES:
                 messages.error(request, f"⚠️ Invalid category. Please select from: {', '.join(CATEGORIES)}.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             try:
                 expense_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 messages.error(request, "⚠️ Invalid date format. Please use YYYY-MM-DD.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # NEW: Check daily allowance if date is today
             if expense_date == date.today():
@@ -368,7 +368,7 @@ def edit_expense_view(request, expense_id):
                                  f"🛑 Daily Allowance Exceeded! "
                                  f"This change (₱{amount_decimal:.2f}) exceeds your remaining daily allowance "
                                  f"of ₱{adjusted_remaining:.2f}.")
-                    return redirect('expenses:expenses')
+                    return redirect('expenses')
             
             # NEW: Check category budget
             budget_status = get_category_budget_status(user_id, category)
@@ -386,7 +386,7 @@ def edit_expense_view(request, expense_id):
                                  f"This change would exceed the budget limit for '{category}'. "
                                  f"Adjusted spending: ₱{adjusted_current:.2f}, "
                                  f"New total: ₱{proposed_total:.2f} / ₱{budget_status['amount_limit']:.2f}")
-                    return redirect('expenses:expenses')
+                    return redirect('expenses')
             
             # Update the expense
             now = datetime.now(timezone.utc).isoformat()
@@ -400,12 +400,12 @@ def edit_expense_view(request, expense_id):
             
             logger.info(f"Expense updated: id={expense_id}, user_id={user_id}, amount=₱{amount_decimal}")
             messages.success(request, f"✅ Expense updated successfully!")
-            return redirect('expenses:expenses')
+            return redirect('expenses')
             
         except Exception as e:
             logger.error(f"Failed to update expense: {e}", exc_info=True)
             messages.error(request, f"⚠️ Failed to update expense: {str(e)}")
-            return redirect('expenses:expenses')
+            return redirect('expenses')
 
 
 def delete_expense_view(request, expense_id):
@@ -431,7 +431,7 @@ def delete_expense_view(request, expense_id):
             
             if not verify.data:
                 messages.error(request, "⚠️ Expense not found or you don't have permission to delete it.")
-                return redirect('expenses:expenses')
+                return redirect('expenses')
             
             # Delete the expense
             expense_data = verify.data[0]
@@ -443,12 +443,12 @@ def delete_expense_view(request, expense_id):
             
             logger.info(f"Expense deleted: id={expense_id}, user_id={user_id}")
             messages.success(request, f"✅ Expense deleted successfully!")
-            return redirect('expenses:expenses')
+            return redirect('expenses')
             
         except Exception as e:
             logger.error(f"Failed to delete expense: {e}", exc_info=True)
             messages.error(request, f"⚠️ Failed to delete expense: {str(e)}")
-            return redirect('expenses:expenses')
+            return redirect('expenses')
     
     # Redirect if not POST
-    return redirect('expenses:expenses')
+    return redirect('expenses')
