@@ -287,3 +287,96 @@ window.BudgetAlertsJS = {
   warnSimilarCategory,
   initializeBudgetProgressBars,
 };
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.edit-alert-btn');
+  if (!btn) return;
+  e.preventDefault();
+
+  const url = btn.dataset.url;
+  try {
+    const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    const data = await res.json();
+
+    if (data.html) {
+      document.getElementById('editAlertModalContent').innerHTML = data.html;
+      const modal = new bootstrap.Modal(document.getElementById('editAlertModal'));
+      modal.show();
+
+      // Attach submit handler
+      const form = document.getElementById('editAlertForm');
+      if (form) handleEditFormSubmit(form, modal);
+
+      // Attach threshold display for the modal slider
+      attachModalThresholdDisplay(document.getElementById('editAlertModal'));
+    } else {
+      showToast('⚠️ Failed to load edit form.', 'warning');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('⚠️ Error loading edit form.', 'danger');
+  }
+});
+
+async function handleEditFormSubmit(form, modal) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const res = await fetch(form.action, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: new FormData(form),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(data.message, 'success');
+      modal.hide();
+      setTimeout(() => window.location.reload(), 800);
+    } else if (data.errors) {
+      let msg = Object.values(data.errors).flat().join('\n');
+      showToast('⚠️ ' + msg, 'warning');
+    } else {
+      showToast('⚠️ Failed to update alert.', 'warning');
+    }
+  }, { once: true });
+}
+
+/* ------------------ NEW: modal threshold display ------------------ */
+/**
+ * Attaches a small percentage display next to the threshold slider inside the modal.
+ * Looks up input[name="threshold_percent"] within the modal and creates/updates a span.
+ */
+function attachModalThresholdDisplay(modalEl) {
+  if (!modalEl) return;
+  const slider = modalEl.querySelector('input[name="threshold_percent"]');
+  if (!slider) return;
+
+  const displayId = 'edit_threshold_value_display';
+  let display = modalEl.querySelector('#' + displayId);
+
+  // create display if not found
+  if (!display) {
+    display = document.createElement('span');
+    display.id = displayId;
+    display.className = 'fw-semibold ms-2';
+    // Try to place after the slider's label if present, otherwise after the slider
+    const label = modalEl.querySelector(`label[for="${slider.id}"]`);
+    if (label) {
+      label.appendChild(display);
+    } else {
+      slider.parentElement && slider.parentElement.insertBefore(display, slider.nextSibling);
+    }
+  }
+
+  function updateDisplay() {
+    const val = slider.value ?? slider.getAttribute('value') ?? slider.defaultValue ?? 0;
+    display.textContent = val + '%';
+  }
+
+  // ensure previous listeners aren't duplicated (remove before adding)
+  slider.removeEventListener('input', updateDisplay);
+  slider.addEventListener('input', updateDisplay);
+  // initialize once
+  updateDisplay();
+}
