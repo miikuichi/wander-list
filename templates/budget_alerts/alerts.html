@@ -152,7 +152,8 @@
                     </td>
                     <td class="text-end">
                       <!-- Edit Button -->
-                      <a href="{% url 'edit_alert' a.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
+                        <a href="#" class="btn btn-sm btn-outline-warning edit-alert-btn"
+                          data-url="{% url 'edit_alert' a.id %}">Edit</a>
                       <!-- Delete Button -->
                       <form method="POST" action="{% url 'delete_alert' a.id %}" style="display: inline;" onsubmit="return confirmDeleteAlert('{{ a.category }}');">
                         {% csrf_token %}
@@ -213,4 +214,10 @@
       return confirm(`Are you sure you want to delete the budget alert for "${categoryName}"?\n\nThis action cannot be undone.`);
     }
   </script>
+
+<div class="modal fade" id="editAlertModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" id="editAlertModalContent"></div>
+  </div>
+</div>
 {% endblock %}

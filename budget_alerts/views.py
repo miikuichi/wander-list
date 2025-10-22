@@ -4,6 +4,11 @@ from .forms import BudgetAlertForm, MAJOR_CATEGORIES
 from supabase_service import get_service_client
 from datetime import datetime, timezone
 import logging
+from django.utils.html import escape
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.urls import reverse
+from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 
@@ -114,34 +119,31 @@ def alerts_page(request):
 
 def edit_alert(request, id):
     """
-    Handles editing an existing budget alert in Supabase.
-    SIMPLIFIED - category is direct column in budget_alerts.
+    AJAX modal edit view (returns JSON).
+    Generates the form HTML inline and includes a valid CSRF token.
     """
     user_id = request.session.get('user_id')
-    
     if not user_id:
-        messages.warning(request, "⚠️ Please log in to edit budget alerts.")
-        return redirect('login:login_page')
-    
+        return JsonResponse({'success': False, 'message': '⚠️ Please log in to edit alerts.'}, status=403)
+
     try:
         supabase = get_service_client()
-        
-        # Fetch the alert from Supabase (SIMPLIFIED - no JOIN needed)
-        alert_response = supabase.table('budget_alerts')\
-            .select('*')\
-            .eq('id', id)\
-            .eq('user_id', user_id)\
-            .single()\
+
+        # Fetch alert
+        alert_response = supabase.table('budget_alerts') \
+            .select('*') \
+            .eq('id', id) \
+            .eq('user_id', user_id) \
+            .single() \
             .execute()
-        
+
         if not alert_response.data:
-            messages.error(request, "⚠️ Budget alert not found or you don't have permission to edit it.")
-            return redirect("budget_alerts:alerts_page")
-        
+            return JsonResponse({'success': False, 'message': 'Alert not found.'}, status=404)
+
         alert_data = alert_response.data
-        
+
         if request.method == "POST":
-            # Create a mock instance for form validation
+            # Build mock instance for form validation (as you had)
             class MockAlert:
                 def __init__(self, data):
                     self.id = data['id']
@@ -151,66 +153,78 @@ def edit_alert(request, id):
                     self.notify_email = data['notify_email']
                     self.notify_push = data['notify_push']
                     self.active = data['active']
-                    self.category = type('obj', (object,), {'name': data['category']})
-            
+                    self.category = type('obj', (object,), {'name': data.get('category', '')})
+
             mock_instance = MockAlert(alert_data)
             form = BudgetAlertForm(request.POST, user=user_id, instance=mock_instance)
-            
+
             if form.is_valid():
-                try:
-                    cleaned_data = form.cleaned_data
-                    final_category_name = cleaned_data['final_category_name']
-                    
-                    # Update budget alert (SIMPLIFIED - direct category column)
-                    now = datetime.now(timezone.utc).isoformat()
-                    update_data = {
-                        'category': final_category_name,  # Direct column update
-                        'amount_limit': float(cleaned_data['amount_limit']),
-                        'threshold_percent': cleaned_data['threshold_percent'],
-                        'notify_dashboard': cleaned_data.get('notify_dashboard', True),
-                        'notify_email': cleaned_data.get('notify_email', False),
-                        'notify_push': cleaned_data.get('notify_push', False),
-                        'active': cleaned_data.get('active', True),
-                        'updated_at': now
-                    }
-                    
-                    supabase.table('budget_alerts')\
-                        .update(update_data)\
-                        .eq('id', id)\
-                        .eq('user_id', user_id)\
-                        .execute()
-                    
-                    logger.info(f"Budget alert updated: id={id}, category={final_category_name}")
-                    messages.success(request, "✅ Budget alert updated successfully!")
-                    return redirect("budget_alerts:alerts_page")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to update budget alert: {e}", exc_info=True)
-                    messages.error(request, f"⚠️ Failed to update budget alert: {str(e)}")
-        else:
-            # Pre-populate form with existing data
-            mock_instance = type('obj', (object,), {
-                'id': alert_data['id'],
-                'amount_limit': alert_data['amount_limit'],
-                'threshold_percent': alert_data['threshold_percent'],
-                'notify_dashboard': alert_data['notify_dashboard'],
-                'notify_email': alert_data['notify_email'],
-                'notify_push': alert_data['notify_push'],
-                'active': alert_data['active'],
-                'category': type('obj', (object,), {'name': alert_data['category']})
-            })
-            form = BudgetAlertForm(user=user_id, instance=mock_instance)
-        
-        return render(request, "budget_alerts/alerts.html", {
-            "form": form,
-            "alert": alert_data,
-            "editing": True
-        })
-        
+                cleaned = form.cleaned_data
+                final_category_name = cleaned['final_category_name']
+                now = datetime.now(timezone.utc).isoformat()
+
+                update_data = {
+                    'category': final_category_name,
+                    'amount_limit': float(cleaned['amount_limit']),
+                    'threshold_percent': cleaned['threshold_percent'],
+                    'notify_dashboard': cleaned.get('notify_dashboard', True),
+                    'notify_email': cleaned.get('notify_email', False),
+                    'notify_push': cleaned.get('notify_push', False),
+                    'active': cleaned.get('active', True),
+                    'updated_at': now,
+                }
+
+                supabase.table('budget_alerts') \
+                    .update(update_data) \
+                    .eq('id', id) \
+                    .eq('user_id', user_id) \
+                    .execute()
+
+                return JsonResponse({'success': True, 'message': '✅ Budget alert updated successfully!'})
+
+            else:
+                # Return validation errors as JSON (frontend will show them)
+                errors = {f: [escape(e) for e in errs] for f, errs in form.errors.items()}
+                return JsonResponse({'success': False, 'errors': errors})
+
+        # GET: build and return the form HTML string with a valid CSRF token
+        form = BudgetAlertForm(user=user_id)
+        # pre-fill form fields using the alert data
+        form.fields['amount_limit'].initial = alert_data.get('amount_limit')
+        form.fields['threshold_percent'].initial = alert_data.get('threshold_percent')
+        form.fields['notify_dashboard'].initial = alert_data.get('notify_dashboard')
+        form.fields['notify_email'].initial = alert_data.get('notify_email')
+        form.fields['notify_push'].initial = alert_data.get('notify_push')
+
+        # Get a valid CSRF token for this request
+        csrf_token = get_token(request)
+
+        # Build form action using reverse (safer than hardcoding)
+        form_action = reverse('edit_alert', kwargs={'id': id})
+        # Render form.as_p() into the modal body (simple approach)
+        form_html = f"""
+        <form id="editAlertForm" method="post" action="{form_action}">
+          <input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Alert: {escape(alert_data.get('category',''))}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            {form.as_p()}
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+        """
+
+        return JsonResponse({'html': form_html})
+
     except Exception as e:
-        logger.error(f"Error editing budget alert: {e}", exc_info=True)
-        messages.error(request, "⚠️ Failed to load budget alert for editing.")
-        return redirect("budget_alerts:alerts_page")
+        logger.error(f"Edit alert error: {e}", exc_info=True)
+        # Return a JSON error message — keep the stacktrace in server logs
+        return JsonResponse({'success': False, 'message': '⚠️ Server error while loading alert.'}, status=500)
 
 
 def delete_alert(request, id):
@@ -255,5 +269,6 @@ def delete_alert(request, id):
             logger.error(f"Failed to delete budget alert: {e}", exc_info=True)
             messages.error(request, f"⚠️ Failed to delete budget alert: {str(e)}")
     
-    return redirect('budget_alerts:alerts_page')
+    return redirect("alerts_page")
+
 
