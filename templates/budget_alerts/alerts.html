@@ -1,4 +1,5 @@
 {% extends 'dashboard/dashboard.html' %}
+{% load static %}
 
 {% block content %}
   <div class="container-fluid d-flex">
@@ -151,9 +152,9 @@
                     </td>
                     <td class="text-end">
                       <!-- Edit Button -->
-                      <a href="{% url 'budget_alerts:edit_alert' a.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
+                      <a href="{% url 'edit_alert' a.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
                       <!-- Delete Button -->
-                      <form method="POST" action="{% url 'budget_alerts:delete_alert' a.id %}" style="display: inline;" onsubmit="return confirmDeleteAlert('{{ a.category }}');">
+                      <form method="POST" action="{% url 'delete_alert' a.id %}" style="display: inline;" onsubmit="return confirmDeleteAlert('{{ a.category }}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                       </form>
@@ -173,7 +174,31 @@
     </div>
   </div>
 
-  {% load static %}
+  <!-- ignore benign placeholder image load errors (prevents the unrelated error toast) -->
+  <script>
+    window.addEventListener('error', function (e) {
+      try {
+        // resource loading errors often populate `e.filename` in modern browsers
+        if (e && e.filename && e.filename.includes('via.placeholder.com')) {
+          // swallow this specific benign error so it doesn't fire global error handlers/toasts
+          e.stopImmediatePropagation?.();
+          return;
+        }
+        // If the error target is an element (like <img>), check its src as well
+        if (e && e.target && e.target instanceof Element) {
+          const src = e.target.getAttribute && (e.target.getAttribute('src') || e.target.style?.backgroundImage);
+          if (src && src.includes('via.placeholder.com')) {
+            e.stopImmediatePropagation?.();
+            return;
+          }
+        }
+      } catch (err) {
+        // ignore any edge-case errors inside this guard
+      }
+      // allow other errors to propagate normally
+    }, true);
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{% static 'css/budget_alerts.js' %}"></script>
   
