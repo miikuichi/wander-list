@@ -30,6 +30,7 @@ urlpatterns = [
     path('expenses/', include('expenses.urls')), 
     path('budget-alerts/', include('budget_alerts.urls')),
     path('savings-goals/', include('savings_goals.urls')),
+    path('reminders/', include('reminders.urls')),  # Reminders and Notifications routes
     
     #Redirect the root path (http://127.0.0.1:8000/) to /login/
     path('', RedirectView.as_view(url='/login/', permanent=True)), # <--- NEW LINE
