@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reminders and Notifications{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="fw-bold mb-4">Reminders and Notifications</h2>
+  <div class="row g-4">
+    <!-- Left column -->
+    <div class="col-12 col-lg-7">
+      <!-- Schedule New Reminder -->
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-1">Schedule New Reminder</h5>
+          <p class="text-muted small mb-3">Set up recurring financial alerts.</p>
+
+          <form>
+            <div class="mb-3">
+              <label class="form-label small">What is the reminder for?</label>
+              <input type="text" class="form-control" placeholder="e.g., Pay rent, Save for vacation">
+            </div>
+
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label small">Date</label>
+                <input type="date" class="form-control" />
+              </div>
+              <div class="col-6">
+                <label class="form-label small">Time</label>
+                <input type="time" class="form-control" />
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label small">Reminder Type</label>
+              <select class="form-select">
+                <option selected>Once</option>
+                <option>Daily</option>
+                <option>Weekly</option>
+                <option>Monthly</option>
+              </select>
+            </div>
+
+            <div class="mt-4">
+              <h6 class="mb-2">Notification Channels</h6>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" value="push" id="chPush" checked>
+                <label class="form-check-label" for="chPush">Push Notifications</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" value="email" id="chEmail">
+                <label class="form-check-label" for="chEmail">Email Alerts</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="inapp" id="chInapp" checked>
+                <label class="form-check-label" for="chInapp">In-app Notifications</label>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-success w-100 mt-3">Create Reminder</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Alert Configuration -->
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title mb-1">Alert Configuration</h5>
+          <p class="text-muted small mb-3">Manage automatic alerts for your financial goals and budget.</p>
+
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+              <div class="fw-semibold">Savings Goal Deadlines</div>
+              <div class="text-muted small">Receive alerts before your savings goals are due.</div>
+            </div>
+            <div>
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="goalDeadlineToggle" checked>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 align-items-center mb-3">
+            <div class="col-auto small text-muted">Alert me</div>
+            <div class="col-6 col-md-4">
+              <select class="form-select form-select-sm">
+                <option>1 day before deadline</option>
+                <option selected>3 days before deadline</option>
+                <option>5 days before deadline</option>
+                <option>7 days before deadline</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="border rounded p-3 bg-light">
+            <div class="fw-semibold">Budget Thresholds</div>
+            <div class="text-muted small mb-2">Get notified when you approach or exceed your budget limits.</div>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'alerts_page' %}">
+              <i class="fas fa-link me-1"></i> Configure Budget Alerts
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title mb-1">Your Scheduled Reminders</h5>
+          <p class="text-muted small">Overview of all active and upcoming notifications.</p>
+
+          <!-- Example items (static for now) -->
+          <div class="list-group list-group-flush">
+            {% for i in "123456" %}
+            <div class="list-group-item px-0">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-semibold">Sample Reminder {{ forloop.counter }}</div>
+                  <div class="text-muted small">Short description</div>
+                  <div class="text-muted small mt-1">Next: Nov 1, 2024, 3:00 PM &nbsp;&nbsp; Frequency: Weekly &nbsp;&nbsp; Channels: In-app</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <a class="text-decoration-none" href="#" title="Edit"><i class="far fa-edit"></i></a>
+                  <a class="text-decoration-none" href="#" title="Delete"><i class="far fa-trash-alt"></i></a>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

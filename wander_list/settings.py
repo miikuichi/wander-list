@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'budget_alerts',
     'expenses.apps.ExpensesConfig',
     'savings_goals.apps.SavingsGoalsConfig',
+    'reminders.apps.RemindersConfig'
 ]
 
 MIDDLEWARE = [
