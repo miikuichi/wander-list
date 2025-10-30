@@ -38,7 +38,10 @@ SECRET_KEY = 'django-insecure-0n-y*q!%qlk=#d+2_uw21zmj#m_wlxxxbx25wmzen+vc$@3muq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['pisoheroes.onrender.com']
+ALLOWED_HOSTS = ['pisoheroes.onrender.com',
+                 '127.0.0.1',  # Required for local development
+                'localhost',
+                 ]
 
 
 # Application definition
