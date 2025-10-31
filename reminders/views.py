@@ -11,7 +11,7 @@ def reminders_page(request):
     """Reminders and Notifications page with create + list.
 
     - GET: list current user's reminders
-    - POST: create a new reminder for the current session user
+    - POST: create a new reminder for the current session user or edit an existing one
 
     Supabase table: reminders (per your screenshot) with columns:
       id, user_id, title, due_at, frequency, next_run_at, pre_alert_offset_days,
@@ -23,6 +23,7 @@ def reminders_page(request):
     supabase = get_service_client()
 
     if request.method == 'POST':
+        reminder_id = request.POST.get('reminder_id')  # For editing
         title = (request.POST.get('title') or '').strip()
         due_at_raw = request.POST.get('due_at') or None
         frequency = (request.POST.get('frequency') or '').strip() or None
@@ -34,6 +35,13 @@ def reminders_page(request):
         if not title:
             messages.error(request, 'Title is required.')
             return redirect('reminders:home')
+
+        # 🛑 ADD THIS VALIDATION BLOCK
+        # Enforce due_at if the frequency is 'once'
+        if frequency == 'once' and not due_at_raw:
+            messages.error(request, 'Date and Time is required for a "Once" reminder.')
+            return redirect('reminders:home')
+        # 🛑 END OF ADDED BLOCK
 
         # Parse due_at to ISO 8601 if provided (expects 'YYYY-MM-DDTHH:MM' or similar)
         due_at_iso = None
@@ -54,23 +62,39 @@ def reminders_page(request):
         except ValueError:
             pre_alert_offset_days = None
 
-        # Insert into Supabase
-        payload = {
-            'user_id': user_id,
-            'title': title,
-            'due_at': due_at_iso,
-            'frequency': frequency,
-            'pre_alert_offset_days': pre_alert_offset_days,
-            'notify_email': notify_email,
-            'notify_in_app': notify_in_app,
-            # is_completed defaults to false in DB
-        }
-
-        try:
-            supabase.table('reminders').insert(payload).execute()
-            messages.success(request, 'Reminder created.')
-        except Exception as e:
-            messages.error(request, f'Failed to create reminder: {e}')
+        if reminder_id:  # Editing existing reminder
+            payload = {
+                'title': title,
+                'due_at': due_at_iso,
+                'frequency': frequency,
+                'notify_email': notify_email,
+                'notify_in_app': notify_in_app,
+            }
+            try:
+                supabase.table('reminders') \
+                    .update(payload) \
+                    .eq('id', reminder_id) \
+                    .eq('user_id', user_id) \
+                    .execute()
+                messages.success(request, 'Reminder updated.')
+            except Exception as e:
+                messages.error(request, f'Failed to update reminder: {e}')
+        else:  # Creating new reminder
+            payload = {
+                'user_id': user_id,
+                'title': title,
+                'due_at': due_at_iso,
+                'frequency': frequency,
+                'pre_alert_offset_days': pre_alert_offset_days,
+                'notify_email': notify_email,
+                'notify_in_app': notify_in_app,
+                # is_completed defaults to false in DB
+            }
+            try:
+                supabase.table('reminders').insert(payload).execute()
+                messages.success(request, 'Reminder created.')
+            except Exception as e:
+                messages.error(request, f'Failed to create reminder: {e}')
 
         return redirect('reminders:home')
 
@@ -83,6 +107,12 @@ def reminders_page(request):
             .order('due_at', desc=False) \
             .execute()
         reminders = res.data if hasattr(res, 'data') else (res.get('data') if isinstance(res, dict) else [])
+        # Parse due_at strings to datetime objects for template rendering
+        for reminder in reminders:
+            if reminder.get('due_at'):
+                parsed_dt = parse_datetime(reminder['due_at'])
+                if parsed_dt:
+                    reminder['due_at'] = parsed_dt
     except Exception as e:
         messages.error(request, f'Failed to load reminders: {e}')
         reminders = []
@@ -169,6 +199,14 @@ def edit_reminder(request, reminder_id):
         if not title:
             messages.error(request, 'Title is required.')
             return render(request, 'reminders/reminders.html', {'editing_reminder': reminder})
+
+        # 🛑 ADD THIS VALIDATION BLOCK
+        # Enforce due_at if the frequency is 'once'
+        if frequency == 'once' and not due_at_raw:
+            messages.error(request, 'Date and Time is required for a "Once" reminder.')
+            # Ensure 'editing_reminder' is still available for re-rendering
+            return render(request, 'reminders/reminders.html', {'editing_reminder': reminder})
+        # 🛑 END OF ADDED BLOCK
 
         # Date Parsing (reusing your existing logic from reminders_page)
         due_at_iso = None
