@@ -7,4 +7,5 @@ app_name = "reminders"
 urlpatterns = [
     # GET /reminders/ -> Reminders and Notifications page
     path("", views.reminders_page, name="home"),
+    path('delete/<int:reminder_id>/', views.delete_reminder, name='delete_reminder'),
 ]
