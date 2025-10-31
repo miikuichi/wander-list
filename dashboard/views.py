@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.db.models import Sum, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from datetime import datetime, timedelta
 from decimal import Decimal
 from supabase_service import get_service_client
@@ -208,6 +209,28 @@ def dashboard_view(request):
             logger.error(f"Error checking budget alerts for user {user_id}: {e}", exc_info=True)
             triggered_alerts = []
         
+        # ===== NOTIFICATIONS (REMINDERS) =====
+        try:
+            notifications_result = supabase.table('reminders') \
+                .select('*') \
+                .eq('user_id', user_id) \
+                .eq('is_completed', False) \
+                .order('due_at', desc=False) \
+                .limit(10) \
+                .execute()
+
+            notifications = notifications_result.data if notifications_result.data else []
+            # Parse due_at strings to datetime objects for template rendering
+            for notification in notifications:
+                if notification.get('due_at'):
+                    parsed_dt = parse_datetime(notification['due_at'])
+                    if parsed_dt:
+                        notification['due_at'] = parsed_dt
+
+        except Exception as e:
+            logger.error(f"Error fetching notifications for user {user_id}: {e}", exc_info=True)
+            notifications = []
+
         context = {
             'username': username,
             'email': email,
@@ -228,6 +251,8 @@ def dashboard_view(request):
             'recent_expenses': recent_expenses,
             # Alerts
             'triggered_alerts': triggered_alerts,
+            # Notifications
+            'notifications': notifications,
         }
         
         logger.info(f"Dashboard loaded successfully for user {user_id}")

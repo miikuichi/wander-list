@@ -29,8 +29,43 @@
             {% endif %}
             <ul class="navbar-nav d-flex align-items-center">
                 {% if request.user_authenticated %}
-                <li class="nav-item">
-                    <a class="nav-link" href="#"><i class="fas fa-bell"></i></a>
+                <li class="nav-item dropdown">
+                    <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-bell"></i>
+                        {% if notifications %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge">
+                            {{ notifications|length }}
+                        </span>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationsDropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
+                        <li><h6 class="dropdown-header">Notifications</h6></li>
+                        {% for notification in notifications %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'reminders:home' %}">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-clock text-warning"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <div class="fw-semibold">{{ notification.title }}</div>
+                                        <small class="text-muted">
+                                            {% if notification.due_at %}
+                                                Due: {{ notification.due_at|date:"M j, Y g:i A" }}
+                                            {% else %}
+                                                No due date
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li><span class="dropdown-item text-muted">No notifications</span></li>
+                        {% endfor %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-center" href="{% url 'reminders:home' %}">View All Reminders</a></li>
+                    </ul>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#"><i class="fas fa-cog"></i></a>
