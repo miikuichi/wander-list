@@ -209,7 +209,8 @@ def google_login(request):
         supabase = get_anon_client()
         
         # Get the redirect URL (where Google will send user back)
-        redirect_url = request.build_absolute_uri('/login/callback/')
+        redirect_url = request.build_absolute_uri('/login/bridge/')
+
         
         # This generates the OAuth URL but doesn't redirect
         # We'll use JavaScript to handle the actual redirect
@@ -306,3 +307,8 @@ def logout_and_redirect(request):
     # Clear all session data
     request.session.flush()
     return redirect('login:login_page')
+
+
+def bridge(request):
+    # Renders the page that reads #access_token and posts it to /login/callback/
+    return render(request, 'login/bridge.html')

@@ -12,6 +12,7 @@ class SupabaseAuthMiddleware:
         exempt_paths = [
             '/login/',
             '/login/register/',
+            '/login/bridge/',
             '/admin/',
         ]
         
