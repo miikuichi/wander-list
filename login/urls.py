@@ -13,4 +13,6 @@ urlpatterns = [
     # OAuth endpoints
     path('google/', views.google_login, name='google_login'),
     path('callback/', views.oauth_callback, name='oauth_callback'),
+    path('bridge/', views.bridge, name='bridge'),
+
 ]

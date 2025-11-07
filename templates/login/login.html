@@ -87,4 +87,61 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+  // Only run if Google/Supabase returned a token in the URL fragment
+  const hash = window.location.hash ? window.location.hash.substring(1) : "";
+  if (!hash) return;
+
+  const params = new URLSearchParams(hash);
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+
+  if (!accessToken) return; // nothing to do
+
+  // Prevent double-submission if user navigates back to this page
+  if (sessionStorage.getItem("oauthPosted") === "1") {
+    return;
+  }
+  sessionStorage.setItem("oauthPosted", "1");
+
+  // Build a POST form to send tokens to Django
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = "{% url 'login:oauth_callback' %}";
+
+  // If your oauth_callback is @csrf_exempt you can skip this block.
+  // Keeping it is fine; if you render this template normally, {{ csrf_token }} will be filled.
+  const csrf = "{{ csrf_token }}";
+  if (csrf && csrf !== "NOTPROVIDED") {
+    const csrfInput = document.createElement("input");
+    csrfInput.type = "hidden";
+    csrfInput.name = "csrfmiddlewaretoken";
+    csrfInput.value = csrf;
+    form.appendChild(csrfInput);
+  }
+
+  const a = document.createElement("input");
+  a.type = "hidden";
+  a.name = "access_token";
+  a.value = accessToken;
+  form.appendChild(a);
+
+  if (refreshToken) {
+    const r = document.createElement("input");
+    r.type = "hidden";
+    r.name = "refresh_token";
+    r.value = refreshToken;
+    form.appendChild(r);
+  }
+
+  document.body.appendChild(form);
+
+  // Clean the hash in history (so the token isn't visible if user comes back)
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+
+  form.submit();
+})();
+</script>
 {% endblock %}
