@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reminders and Notifications{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="fw-bold mb-4">Reminders and Notifications</h2>
+    <div class="row g-4">
+        <div class="col-12 col-lg-7">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-1">Schedule New Reminder</h5>
+                    <p class="text-muted small mb-3">Set up recurring financial alerts.</p>
+
+                    <form method="POST">
+                      {% csrf_token %}
+
+                      <div class="mb-3">
+                          <label for="id_title" class="form-label small">What is the reminder for?</label>
+                          <input type="text" name="title" id="id_title" class="form-control" placeholder="e.g., Pay rent, Save for vacation" required>
+                      </div>
+
+                      <div class="mb-3">
+                          <label for="id_due_at" class="form-label small">Date and Time</label>
+                          <input type="datetime-local" name="due_at" id="id_due_at" class="form-control">
+                      </div>
+
+                      <div class="mt-3">
+                          <label for="id_frequency" class="form-label small">Reminder Type</label>
+                          <select name="frequency" id="id_frequency" class="form-select">
+                              <option value="once" selected>Once</option>
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                              <option value="monthly">Monthly</option>
+                          </select>
+                      </div>
+
+                      <div class="mt-4">
+                          <h6 class="mb-2">Notification Channels</h6>
+
+                          <div class="form-check mb-2">
+                              <input class="form-check-input" type="checkbox" name="notify_email" id="chEmail">
+                              <label class="form-check-label" for="chEmail">Email Alerts</label>
+                          </div>
+                          <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="notify_in_app" id="chInapp" checked>
+                              <label class="form-check-label" for="chInapp">In-app Notifications</label>
+                          </div>
+                      </div>
+
+                      <button type="submit" class="btn btn-success w-100 mt-3">Create Reminder</button>
+                  </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                </div>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title mb-1">Your Scheduled Reminders</h5>
+                    <p class="text-muted small">Overview of all active and upcoming notifications.</p>
+
+                    <div class="list-group list-group-flush">
+                        {% for reminder in reminders %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center flex-grow-1">
+                                    
+                                    <div class="text-center me-3 p-2 border rounded" style="min-width: 60px;">
+                                        <div class="fw-bold fs-6 text-primary">{{ reminder.due_at|date:"d" }}</div>
+                                        <div class="small text-muted">{{ reminder.due_at|date:"M" }}</div>
+                                    </div>
+
+                                    <div>
+                                        <div class="fw-semibold">{{ reminder.title }}</div>
+                                        <div class="text-muted small">
+                                            Time: {% if reminder.due_at %}{{ reminder.due_at|date:"M j, Y g:i A" }}{% else %}No date set{% endif %}
+                                            <span class="ms-2">|</span> Frequency: {{ reminder.frequency|default:"Once"|capfirst }}
+                                            <span class="ms-2">|</span> Channels:
+                                            {% if reminder.notify_email %}Email{% endif %}{% if reminder.notify_email and reminder.notify_in_app %}, {% endif %}{% if reminder.notify_in_app %}In-app{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2 align-items-center ms-3">
+                                    <button type="button" class="btn p-0 border-0 bg-transparent text-primary" title="Edit" data-bs-toggle="modal" data-bs-target="#editModal" data-reminder-id="{{ reminder.id }}" data-title="{{ reminder.title }}" data-due-at="{% if reminder.due_at %}{{ reminder.due_at|date:'Y-m-d\TH:i' }}{% endif %}" data-frequency="{{ reminder.frequency }}" data-notify-email="{% if reminder.notify_email %}true{% endif %}" data-notify-in-app="{% if reminder.notify_in_app %}true{% endif %}">
+                                        <i class="far fa-edit"></i>
+                                    </button>
+
+                                    <form method="POST" action="{% url 'reminders:delete_reminder' reminder_id=reminder.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="btn p-0 border-0 bg-transparent text-danger"
+                                                title="Delete"
+                                                onclick="return confirm('Are you sure you want to delete this reminder?');">
+                                            <i class="far fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted mt-3">You have no scheduled reminders.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Reminder Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Edit Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="editForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="reminder_id" id="editReminderId">
+
+                    <div class="mb-3">
+                        <label for="editTitle" class="form-label small">What is the reminder for?</label>
+                        <input type="text" name="title" id="editTitle" class="form-control" placeholder="e.g., Pay rent, Save for vacation" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editDueAt" class="form-label small">Date and Time</label>
+                        <input type="datetime-local" name="due_at" id="editDueAt" class="form-control">
+                    </div>
+
+                    <div class="mt-3">
+                        <label for="editFrequency" class="form-label small">Reminder Type</label>
+                        <select name="frequency" id="editFrequency" class="form-select">
+                            <option value="once">Once</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6 class="mb-2">Notification Channels</h6>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="notify_email" id="editNotifyEmail">
+                            <label class="form-check-label" for="editNotifyEmail">Email Alerts</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="notify_in_app" id="editNotifyInApp">
+                            <label class="form-check-label" for="editNotifyInApp">In-app Notifications</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 mt-3">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editModal = document.getElementById('editModal');
+    editModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const reminderId = button.getAttribute('data-reminder-id');
+        const title = button.getAttribute('data-title');
+        const dueAt = button.getAttribute('data-due-at');
+        const frequency = button.getAttribute('data-frequency');
+        const notifyEmail = button.getAttribute('data-notify-email') === 'true';
+        const notifyInApp = button.getAttribute('data-notify-in-app') === 'true';
+
+        document.getElementById('editReminderId').value = reminderId;
+        document.getElementById('editTitle').value = title;
+        document.getElementById('editDueAt').value = dueAt;
+        document.getElementById('editFrequency').value = frequency;
+        document.getElementById('editNotifyEmail').checked = notifyEmail;
+        document.getElementById('editNotifyInApp').checked = notifyInApp;
+    });
+});
+</script>
+
+{% endblock %}
