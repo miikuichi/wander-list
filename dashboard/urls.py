@@ -5,4 +5,5 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard_view, name='dashboard'),
+    path('settings/monthly-allowance/', views.update_monthly_allowance_view, name='update_monthly_allowance'),
 ]
