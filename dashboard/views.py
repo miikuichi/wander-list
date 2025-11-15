@@ -1,13 +1,24 @@
+# dashboard/views.py
 from django.shortcuts import render, redirect
 from django.db.models import Sum, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from datetime import datetime, timedelta
-from decimal import Decimal
+from django.views.decorators.http import require_POST
+from datetime import datetime, timedelta, date
+from decimal import Decimal, ROUND_HALF_UP
+from calendar import monthrange
 from supabase_service import get_service_client
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _days_in_current_month(d: date | None = None) -> int:
+    """
+    Helper: number of days in the given date's month (or current month if None).
+    """
+    d = d or date.today()
+    return monthrange(d.year, d.month)[1]
 
 
 def dashboard_view(request):
@@ -36,7 +47,15 @@ def dashboard_view(request):
         
         # Get Supabase client
         supabase = get_service_client()
-        
+
+        # Lazy import of user_settings service to avoid import-time issues
+        try:
+            from services.user_settings import get_monthly_allowance
+        except Exception:
+            # If the import fails, provide a safe stub so the view still runs
+            def get_monthly_allowance(supabase_client, uid):
+                return None
+
         # Get today's date
         today = timezone.now().date()
         today_str = today.isoformat()
@@ -45,7 +64,8 @@ def dashboard_view(request):
         start_of_month = today.replace(day=1).isoformat()
         start_of_week = (today - timedelta(days=today.weekday())).isoformat()
         
-        # ===== DAILY ALLOWANCE SECTION =====
+        # ===== DAILY ALLOWANCE SECTION (MODIFIED) =====
+        # Label: START_DAILY_ALLOWANCE
         try:
             # Get today's expenses from Supabase
             today_result = supabase.table('expenses')\
@@ -74,17 +94,38 @@ def dashboard_view(request):
             
             month_expenses = sum(Decimal(str(e['amount'])) for e in month_result.data) if month_result.data else Decimal('0.00')
             
-            # Placeholder daily allowance (you can add a user preferences table later)
-            daily_allowance = Decimal('500.00')
+            # --- NEW: read user's monthly allowance from Supabase and compute daily ---
+            days_this_month = _days_in_current_month()
+            monthly_allowance = None
+            try:
+                monthly_allowance = get_monthly_allowance(supabase, user_id)
+            except Exception as e:
+                logger.error(f"Failed to read monthly allowance for user {user_id}: {e}", exc_info=True)
+                monthly_allowance = None
+
+            if monthly_allowance and monthly_allowance > 0:
+                daily_allowance = (monthly_allowance / Decimal(days_this_month))\
+                    .quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                # fallback to previous default if user hasn't set monthly allowance
+                daily_allowance = Decimal('500.00')
+                monthly_allowance = None
+
             remaining_today = daily_allowance - today_expenses
             
-            logger.info(f"Dashboard: user {user_id} - Today: ₱{today_expenses}, Week: ₱{week_expenses}, Month: ₱{month_expenses}")
+            logger.info(
+                f"Dashboard: user {user_id} - Today: ₱{today_expenses}, Week: ₱{week_expenses}, "
+                f"Month: ₱{month_expenses}, Daily: ₱{daily_allowance} (monthly={monthly_allowance})"
+            )
             
         except Exception as e:
             logger.error(f"Error calculating expenses for user {user_id}: {e}", exc_info=True)
             today_expenses = week_expenses = month_expenses = Decimal('0.00')
             daily_allowance = Decimal('500.00')
             remaining_today = daily_allowance
+            monthly_allowance = None
+            days_this_month = _days_in_current_month()
+        # Label: END_DAILY_ALLOWANCE
         
         # ===== BUDGET USAGE BY CATEGORY =====
         try:
@@ -237,6 +278,8 @@ def dashboard_view(request):
             'user_id': user_id,
             # Daily allowance
             'daily_allowance': daily_allowance,
+            'monthly_allowance': monthly_allowance,     # <-- NEW: passed to template
+            'days_in_month': days_this_month,           # <-- NEW: passed to template
             'today_expenses': today_expenses,
             'remaining_today': remaining_today,
             'week_expenses': week_expenses,
@@ -267,3 +310,42 @@ def dashboard_view(request):
             'user_id': user_id,
         }
         return render(request, 'dashboard/dashboard.html', context)
+
+
+# ===== NEW VIEW: update_monthly_allowance_view =====
+# Label: START_UPDATE_MONTHLY_ALLOWANCE_VIEW
+@require_POST
+def update_monthly_allowance_view(request):
+    """
+    POST endpoint that accepts 'monthly_allowance' and upserts it to Supabase.
+    """
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login:login_page')
+
+    raw = (request.POST.get('monthly_allowance') or '').strip().replace(',', '')
+    try:
+        value = Decimal(raw)
+        if value < 0:
+            raise ValueError("negative")
+    except Exception:
+        logger.warning(f"Invalid monthly_allowance input from user {user_id}: {raw}")
+        # Optionally: use Django messages to show invalid input; for now, redirect back
+        return redirect('dashboard')  # adjust to your URL name if different
+
+    supabase = get_service_client()
+    try:
+        # Lazy import setter to avoid import-time issues
+        try:
+            from services.user_settings import set_monthly_allowance
+        except Exception:
+            def set_monthly_allowance(supabase_client, uid, val):
+                logger.error('set_monthly_allowance not available')
+                return None
+
+        set_monthly_allowance(supabase, user_id, value)
+    except Exception as e:
+        logger.error(f"Failed to save monthly allowance for {user_id}: {e}", exc_info=True)
+
+    return redirect('dashboard')  # adjust to your URL name if different
+# Label: END_UPDATE_MONTHLY_ALLOWANCE_VIEW
