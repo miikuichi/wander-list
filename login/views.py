@@ -120,6 +120,10 @@ def register(request):
 
 def login_view(request):
     """Handles user login using Supabase authentication."""
+    if 'user_id' in request.session:
+        return redirect('dashboard')
+    
+    
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
