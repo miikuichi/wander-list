@@ -188,11 +188,11 @@ def get_category_budget_status(user_id, category_name):
     try:
         supabase = get_service_client()
         
-        # Get budget alert for this category
+        # Get budget alert for this category (SIMPLIFIED SCHEMA - no join needed)
         alert_response = supabase.table('budget_alerts')\
-            .select('*, budget_categories!inner(*)')\
+            .select('*')\
             .eq('user_id', user_id)\
-            .eq('budget_categories.name', category_name)\
+            .eq('category', category_name)\
             .eq('active', True)\
             .execute()
         
@@ -302,11 +302,8 @@ def expenses_view(request):
                                  f"₱{allowance_info['daily_allowance']:.2f})")
                     return redirect('expenses')
                 
-                # Warn if expense would use more than 80% of remaining allowance
-                if amount_decimal > (allowance_info['remaining'] * Decimal('0.8')):
-                    messages.warning(request,
-                                   f"⚠️ Warning: This expense will use most of your remaining daily allowance "
-                                   f"(₱{allowance_info['remaining'] - amount_decimal:.2f} left after this expense).")
+                # Note: Daily allowance alerts are now handled via notification system
+                # No need for warning message here - notification will be created after expense is added
             
             # NEW VALIDATION 8: Check category budget limits
             budget_status = get_category_budget_status(user_id, category)
@@ -323,13 +320,8 @@ def expenses_view(request):
                                  f"Remaining: ₱{budget_status['remaining']:.2f}")
                     return redirect('expenses')
                 
-                # Warn if approaching threshold
-                new_percent = (proposed_total / budget_status['amount_limit'] * 100)
-                if new_percent >= budget_status['threshold_percent']:
-                    messages.warning(request,
-                                   f"⚠️ Budget Alert: Adding this expense will reach {new_percent:.1f}% "
-                                   f"of your '{category}' budget (₱{proposed_total:.2f} / "
-                                   f"₱{budget_status['amount_limit']:.2f}).")
+                # Note: Budget threshold alerts are now handled via notification system
+                # No need for warning message here - notification will be created after expense is added
             
             # All validations passed - Insert into Supabase
             supabase = get_service_client()
@@ -359,15 +351,19 @@ def expenses_view(request):
                 from django.utils import timezone as dj_timezone
                 from notifications.models import NotificationLog
                 
+                logger.info(f"Checking budget alerts after expense: user={user_id}, category={category}, amount={amount_decimal}")
+                
                 # Check 1: Category budget alert
                 post_expense_budget = get_category_budget_status(user_id, category)
                 if post_expense_budget:
                     percentage = post_expense_budget['percent_used']
                     threshold = post_expense_budget['threshold_percent']
                     
+                    logger.info(f"Budget status: {percentage:.1f}% used (threshold: {threshold}%)")
+                    
                     # If threshold reached or exceeded, send notification
                     if percentage >= threshold:
-                        # Check if notification already sent today
+                        # Check if notification already sent for this alert today
                         today_start = dj_timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
                         existing_notification = NotificationLog.objects.filter(
                             user_id=user_id,
@@ -378,7 +374,8 @@ def expenses_view(request):
                         ).exists()
                         
                         if not existing_notification:
-                            NotificationService.create_budget_alert_notification(
+                            logger.info(f"Sending budget alert notification: {percentage:.1f}% >= {threshold}%")
+                            result = NotificationService.create_budget_alert_notification(
                                 user_id=user_id,
                                 category=category,
                                 spent=float(post_expense_budget['current_spending']),
@@ -387,8 +384,11 @@ def expenses_view(request):
                                 threshold=threshold,
                                 user_email=user_email,
                             )
-                            logger.info(f"Category budget alert sent: user={user_id}, category={category}, "
-                                      f"percentage={percentage:.1f}%")
+                            logger.info(f"Budget alert notification result: {result}")
+                        else:
+                            logger.info(f"Budget alert already sent today for category: {category}")
+                else:
+                    logger.info(f"No active budget alert found for category: {category}")
                 
                 # Check 2: Daily allowance alert (if expense is for today)
                 if expense_date == date.today():
