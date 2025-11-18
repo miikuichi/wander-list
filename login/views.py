@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 def register(request):
     """Handles user registration using Supabase authentication."""
+    # If user is already logged in, redirect to dashboard
+    if 'user_id' in request.session:
+        return redirect('dashboard')
+    
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
@@ -120,9 +124,9 @@ def register(request):
 
 def login_view(request):
     """Handles user login using Supabase authentication."""
+    # If user is already logged in, redirect to dashboard
     if 'user_id' in request.session:
         return redirect('dashboard')
-    
     
     if request.method == 'POST':
         form = LoginForm(request.POST)

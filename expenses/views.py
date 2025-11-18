@@ -1,51 +1,172 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from supabase_service import get_service_client
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 import logging
 
 logger = logging.getLogger(__name__)
 
 # Hardcoded categories as requested - matching budget_alerts major categories
-CATEGORIES = ["Food", "Transport", "Leisure", "Bills", "School Supplies", "Shopping", "Healthcare", "Entertainment", "Other"]
+CATEGORIES = ["Food", "Transport", "Leisure", "Bills", "School Supplies", "Shopping", "Healthcare", "Entertainment", "Savings", "Other"]
+
+# Income sources for daily income tracking
+INCOME_SOURCES = ["Work Tip", "Gift", "Side Hustle", "Allowance Advance", "Savings Withdrawal", "Other"]
+
+
+def get_wallet_balance(user_id):
+    """
+    Calculate wallet balance with carryover from previous days.
+    
+    Returns:
+        - opening_balance: Balance carried over from yesterday
+        - daily_allowance: Today's base allowance from monthly allowance
+        - daily_income: Extra income added today
+        - today_expenses: Total spent today
+        - closing_balance: Available money (carries to tomorrow)
+        - total_available: Opening + Allowance + Income
+    """
+    try:
+        supabase = get_service_client()
+        today = date.today()
+        today_str = today.isoformat()
+        yesterday = (today - timedelta(days=1)).isoformat()
+        
+        # 1. Calculate today's base daily allowance
+        from services.user_settings import get_monthly_allowance
+        monthly_allowance = get_monthly_allowance(supabase, user_id)
+        
+        if monthly_allowance and monthly_allowance > 0:
+            from calendar import monthrange
+            days_in_month = monthrange(today.year, today.month)[1]
+            daily_allowance = (monthly_allowance / Decimal(days_in_month)).quantize(Decimal('0.01'))
+        else:
+            daily_allowance = Decimal('500.00')
+        
+        # 2. Get yesterday's closing balance (opening balance for today)
+        # Calculate: yesterday's allowance + income - expenses
+        yesterday_allowance_response = supabase.table('expenses')\
+            .select('amount')\
+            .eq('user_id', user_id)\
+            .eq('date', yesterday)\
+            .execute()
+        
+        yesterday_expenses = sum(Decimal(str(exp['amount'])) for exp in yesterday_allowance_response.data) if yesterday_allowance_response.data else Decimal('0.00')
+        
+        yesterday_income_response = supabase.table('daily_income')\
+            .select('amount')\
+            .eq('user_id', user_id)\
+            .eq('date', yesterday)\
+            .execute()
+        
+        yesterday_income = sum(Decimal(str(inc['amount'])) for inc in yesterday_income_response.data) if yesterday_income_response.data else Decimal('0.00')
+        
+        # Calculate yesterday's daily allowance for opening balance
+        if monthly_allowance and monthly_allowance > 0:
+            from calendar import monthrange
+            yesterday_date_obj = datetime.strptime(yesterday, '%Y-%m-%d').date()
+            yesterday_days = monthrange(yesterday_date_obj.year, yesterday_date_obj.month)[1]
+            yesterday_daily = (monthly_allowance / Decimal(yesterday_days)).quantize(Decimal('0.01'))
+        else:
+            yesterday_daily = Decimal('500.00')
+        
+        opening_balance = yesterday_daily + yesterday_income - yesterday_expenses
+        opening_balance = max(opening_balance, Decimal('0.00'))  # Can't be negative
+        
+        # 3. Get today's extra income
+        income_response = supabase.table('daily_income')\
+            .select('amount')\
+            .eq('user_id', user_id)\
+            .eq('date', today_str)\
+            .execute()
+        
+        daily_income = sum(Decimal(str(inc['amount'])) for inc in income_response.data) if income_response.data else Decimal('0.00')
+        
+        # 4. Get today's expenses
+        expenses_response = supabase.table('expenses')\
+            .select('amount')\
+            .eq('user_id', user_id)\
+            .eq('date', today_str)\
+            .execute()
+        
+        today_expenses = sum(Decimal(str(exp['amount'])) for exp in expenses_response.data) if expenses_response.data else Decimal('0.00')
+        
+        # 5. Calculate totals
+        total_available = opening_balance + daily_allowance + daily_income
+        closing_balance = total_available - today_expenses
+        percent_used = (today_expenses / total_available * 100) if total_available > 0 else 0
+        
+        logger.info(f"Wallet balance: user={user_id}, opening=₱{opening_balance}, allowance=₱{daily_allowance}, "
+                   f"income=₱{daily_income}, expenses=₱{today_expenses}, closing=₱{closing_balance}")
+        
+        return {
+            'opening_balance': opening_balance,
+            'daily_allowance': daily_allowance,
+            'daily_income': daily_income,
+            'today_expenses': today_expenses,
+            'total_available': total_available,
+            'closing_balance': closing_balance,
+            'percent_used': percent_used,
+            'monthly_allowance': monthly_allowance
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating wallet balance: {e}", exc_info=True)
+        return {
+            'opening_balance': Decimal('0.00'),
+            'daily_allowance': Decimal('500.00'),
+            'daily_income': Decimal('0.00'),
+            'today_expenses': Decimal('0.00'),
+            'total_available': Decimal('500.00'),
+            'closing_balance': Decimal('500.00'),
+            'percent_used': 0,
+            'monthly_allowance': None
+        }
 
 
 def get_daily_allowance_remaining(user_id):
     """
     Get the remaining daily allowance for a user today.
+    Calculates daily allowance from monthly_allowance in user_settings table.
     """
     try:
         supabase = get_service_client()
         
-        # Get user's daily allowance from Supabase users table
-        user_response = supabase.table('users')\
-            .select('daily_allowance')\
-            .eq('id', user_id)\
-            .single()\
-            .execute()
+        # Get monthly allowance from user_settings table
+        from services.user_settings import get_monthly_allowance
+        monthly_allowance = get_monthly_allowance(supabase, user_id)
         
-        daily_allowance = Decimal(str(user_response.data.get('daily_allowance', '500.00')))
+        # Calculate daily allowance
+        if monthly_allowance and monthly_allowance > 0:
+            from calendar import monthrange
+            today = date.today()
+            days_in_month = monthrange(today.year, today.month)[1]
+            daily_allowance = (monthly_allowance / Decimal(days_in_month)).quantize(Decimal('0.01'))
+        else:
+            daily_allowance = Decimal('500.00')  # Default fallback
         
         # Get today's expenses
-        today = date.today().isoformat()
+        today_str = date.today().isoformat()
         expenses_response = supabase.table('expenses')\
             .select('amount')\
             .eq('user_id', user_id)\
-            .eq('date', today)\
+            .eq('date', today_str)\
             .execute()
         
         today_spending = sum(Decimal(str(exp['amount'])) for exp in expenses_response.data) if expenses_response.data else Decimal('0.00')
         
         remaining = daily_allowance - today_spending
+        percent_used = (today_spending / daily_allowance * 100) if daily_allowance > 0 else 0
         
         logger.info(f"Daily allowance check: user={user_id}, allowance=₱{daily_allowance}, "
-                   f"spent=₱{today_spending}, remaining=₱{remaining}")
+                   f"spent=₱{today_spending}, remaining=₱{remaining}, used={percent_used:.1f}%")
         
         return {
             'daily_allowance': daily_allowance,
             'today_spending': today_spending,
-            'remaining': remaining
+            'remaining': remaining,
+            'percent_used': percent_used,
+            'monthly_allowance': monthly_allowance
         }
         
     except Exception as e:
@@ -53,7 +174,9 @@ def get_daily_allowance_remaining(user_id):
         return {
             'daily_allowance': Decimal('500.00'),
             'today_spending': Decimal('0.00'),
-            'remaining': Decimal('500.00')
+            'remaining': Decimal('500.00'),
+            'percent_used': 0,
+            'monthly_allowance': None
         }
 
 
@@ -225,6 +348,82 @@ def expenses_view(request):
             # Log success for debugging
             logger.info(f"Expense added: user_id={user_id}, amount=₱{amount_decimal}, "
                        f"category={category}, date={date_str}")
+            
+            # NEW: Check if expense triggered budget alert and send notification
+            try:
+                # Get user email for notifications
+                user_response = supabase.table('login_user').select('email').eq('id', user_id).execute()
+                user_email = user_response.data[0]['email'] if user_response.data else None
+                
+                from notifications.services import NotificationService
+                from django.utils import timezone as dj_timezone
+                from notifications.models import NotificationLog
+                
+                # Check 1: Category budget alert
+                post_expense_budget = get_category_budget_status(user_id, category)
+                if post_expense_budget:
+                    percentage = post_expense_budget['percent_used']
+                    threshold = post_expense_budget['threshold_percent']
+                    
+                    # If threshold reached or exceeded, send notification
+                    if percentage >= threshold:
+                        # Check if notification already sent today
+                        today_start = dj_timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                        existing_notification = NotificationLog.objects.filter(
+                            user_id=user_id,
+                            category='budget_alert',
+                            related_object_type='budget_alert',
+                            title__icontains=category,
+                            created_at__gte=today_start
+                        ).exists()
+                        
+                        if not existing_notification:
+                            NotificationService.create_budget_alert_notification(
+                                user_id=user_id,
+                                category=category,
+                                spent=float(post_expense_budget['current_spending']),
+                                limit=float(post_expense_budget['amount_limit']),
+                                percentage=float(percentage),
+                                threshold=threshold,
+                                user_email=user_email,
+                            )
+                            logger.info(f"Category budget alert sent: user={user_id}, category={category}, "
+                                      f"percentage={percentage:.1f}%")
+                
+                # Check 2: Daily allowance alert (if expense is for today)
+                if expense_date == date.today():
+                    post_expense_allowance = get_daily_allowance_remaining(user_id)
+                    daily_percent = post_expense_allowance['percent_used']
+                    
+                    # Send notification if exceeded 80% of daily allowance
+                    if daily_percent >= 80:
+                        today_start = dj_timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                        existing_daily_notification = NotificationLog.objects.filter(
+                            user_id=user_id,
+                            category='budget_alert',
+                            related_object_type='daily_allowance',
+                            created_at__gte=today_start
+                        ).exists()
+                        
+                        if not existing_daily_notification:
+                            daily_allowance = float(post_expense_allowance['daily_allowance'])
+                            today_spending = float(post_expense_allowance['today_spending'])
+                            
+                            NotificationService.send_notification(
+                                user_id=user_id,
+                                title=f"💰 Daily Allowance Alert: {daily_percent:.0f}% Used",
+                                message=f"You've spent ₱{today_spending:.2f} of your ₱{daily_allowance:.2f} daily allowance today. Remaining: ₱{post_expense_allowance['remaining']:.2f}",
+                                category='budget_alert',
+                                notification_types=['dashboard', 'email'],
+                                related_object_type='daily_allowance',
+                                related_object_id=None,
+                                user_email=user_email,
+                            )
+                            logger.info(f"Daily allowance alert sent: user={user_id}, percentage={daily_percent:.1f}%")
+                            
+            except Exception as notif_error:
+                logger.error(f"Failed to send budget alert notification: {notif_error}", exc_info=True)
+            
             messages.success(request, f"✅ Expense of ₱{amount_decimal:.2f} added successfully!")
             
             return redirect('expenses')
@@ -254,12 +453,18 @@ def expenses_view(request):
         recent_expenses = []
         messages.error(request, "⚠️ Failed to load expenses from database.")
     
+    # Get wallet balance with carryover
+    wallet_info = get_wallet_balance(user_id)
+    
     context = {
         'categories': CATEGORIES,
+        'income_sources': INCOME_SOURCES,
         'recent_expenses': recent_expenses,
-        'daily_allowance': allowance_info['daily_allowance'],
-        'today_spending': allowance_info['today_spending'],
-        'remaining_allowance': allowance_info['remaining'],
+        'wallet': wallet_info,
+        # Legacy fields for compatibility
+        'daily_allowance': wallet_info['daily_allowance'],
+        'today_spending': wallet_info['today_expenses'],
+        'remaining_allowance': wallet_info['closing_balance'],
     }
     return render(request, 'expenses/expenses.html', context)
 
@@ -451,4 +656,84 @@ def delete_expense_view(request, expense_id):
             return redirect('expenses')
     
     # Redirect if not POST
+    return redirect('expenses')
+
+
+def add_income_view(request):
+    """
+    Handles adding extra income (tips, gifts, side hustles, etc).
+    This income is added to the daily wallet balance and carries over.
+    """
+    user_id = request.session.get('user_id')
+    
+    if not user_id:
+        return redirect('login:login_page')
+    
+    if request.method == 'POST':
+        try:
+            amount = request.POST.get('amount')
+            source = request.POST.get('source')
+            date_str = request.POST.get('date')
+            notes = request.POST.get('notes', '')
+            
+            # Validation 1: Required fields
+            if not amount or not source or not date_str:
+                messages.error(request, "⚠️ Amount, source, and date are required.")
+                return redirect('expenses')
+            
+            # Validation 2: Valid number
+            try:
+                amount_decimal = Decimal(amount)
+            except (ValueError, TypeError):
+                messages.error(request, "⚠️ Amount must be a valid number.")
+                return redirect('expenses')
+            
+            # Validation 3: Positive amount
+            if amount_decimal <= 0:
+                messages.error(request, "⚠️ Amount must be greater than zero.")
+                return redirect('expenses')
+            
+            # Validation 4: Reasonable amount
+            if amount_decimal > Decimal('999999999.99'):
+                messages.error(request, "⚠️ Amount is too large. Maximum is ₱999,999,999.99.")
+                return redirect('expenses')
+            
+            # Validation 5: Valid source
+            if source not in INCOME_SOURCES:
+                messages.error(request, f"⚠️ Invalid source. Please select from: {', '.join(INCOME_SOURCES)}.")
+                return redirect('expenses')
+            
+            # Validation 6: Valid date
+            try:
+                income_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, "⚠️ Invalid date format. Please use YYYY-MM-DD.")
+                return redirect('expenses')
+            
+            # Insert into Supabase
+            supabase = get_service_client()
+            now = datetime.now(timezone.utc).isoformat()
+            
+            result = supabase.table('daily_income').insert({
+                'user_id': user_id,
+                'amount': float(amount_decimal),
+                'source': source,
+                'date': date_str,
+                'notes': notes.strip(),
+                'created_at': now,
+                'updated_at': now
+            }).execute()
+            
+            logger.info(f"Income added: user_id={user_id}, amount=₱{amount_decimal}, "
+                       f"source={source}, date={date_str}")
+            
+            messages.success(request, f"✅ Income of ₱{amount_decimal:.2f} ({source}) added successfully!")
+            return redirect('expenses')
+            
+        except Exception as e:
+            logger.error(f"Failed to add income: {e}", exc_info=True)
+            messages.error(request, f"⚠️ Failed to add income: {str(e)}")
+            return redirect('expenses')
+    
+    # GET request - redirect to expenses page
     return redirect('expenses')

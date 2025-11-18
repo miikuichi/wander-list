@@ -79,7 +79,7 @@ class BudgetAlertForm(forms.Form):
     )
     
     notify_dashboard = forms.BooleanField(
-        label="Show on Dashboard",
+        label="Notification Bell",
         required=False,
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
@@ -103,7 +103,7 @@ class BudgetAlertForm(forms.Form):
         label="Active",
         required=False,
         initial=True,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        widget=forms.HiddenInput()
     )
 
     def __init__(self, *args, **kwargs):
@@ -201,11 +201,21 @@ class BudgetAlertForm(forms.Form):
                     
                     if existing_alert.data:
                         # If editing, check if it's a different alert
-                        if self.instance and existing_alert.data[0]['id'] == self.instance.id:
-                            # It's the same alert being edited, allow it
-                            pass
-                        else:
-                            # Different alert exists
+                        if self.instance and hasattr(self.instance, 'id'):
+                            # Editing mode - check if it's the same alert
+                            if existing_alert.data[0]['id'] == self.instance.id:
+                                # It's the same alert being edited, allow it
+                                pass
+                            else:
+                                # Different alert exists
+                                alert_data = existing_alert.data[0]
+                                raise forms.ValidationError({
+                                    'category_choice': f'⚠️ A budget alert already exists for "{cleaned_data["final_category_name"]}" '
+                                                     f'(₱{alert_data["amount_limit"]}, {alert_data["threshold_percent"]}% threshold). '
+                                                     f'Please edit or delete the existing alert first.'
+                                })
+                        elif not self.instance:
+                            # Creating new alert - duplicate not allowed
                             alert_data = existing_alert.data[0]
                             raise forms.ValidationError({
                                 'category_choice': f'⚠️ A budget alert already exists for "{cleaned_data["final_category_name"]}" '

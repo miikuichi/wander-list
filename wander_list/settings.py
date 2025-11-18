@@ -20,7 +20,7 @@ load_dotenv()
 # Supabase configuration
 # Read Supabase configuration from environment. Set these values in a local
 # `.env` file during development (python-dotenv is already used above).
-SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_URL = "https://miwckqsyomyxloyppsuj.supabase.co"
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 # Optional service role key (server-only operations). Keep this secret.
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -38,10 +38,7 @@ SECRET_KEY = 'django-insecure-0n-y*q!%qlk=#d+2_uw21zmj#m_wlxxxbx25wmzen+vc$@3muq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['pisoheroes.onrender.com',
-                 '127.0.0.1',  # Required for local development
-                'localhost',
-                 ]
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -58,12 +55,12 @@ INSTALLED_APPS = [
     'budget_alerts',
     'expenses.apps.ExpensesConfig',
     'savings_goals.apps.SavingsGoalsConfig',
-    'reminders.apps.RemindersConfig'
+    'reminders.apps.RemindersConfig',  # Reminders app
+    'notifications.apps.NotificationsConfig',  # Notification system
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -148,9 +145,6 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# Configure WhiteNoise to use the compressed storage backend
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -168,3 +162,33 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+# Email Configuration
+# Using Gmail SMTP for sending real emails
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')  # Your Gmail address
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # App password
+DEFAULT_FROM_EMAIL = f'PisoHeroes <{os.getenv("EMAIL_HOST_USER", "noreply@pisoheroes.com")}>'
+
+# For development/testing, you can switch to console backend:
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# DEFAULT_FROM_EMAIL = 'PisoHeroes <noreply@pisoheroes.com>'
+
+# Supabase Edge Functions Configuration
+# For sending emails via Supabase Edge Functions (see EMAIL_SETUP_GUIDE.md)
+SUPABASE_URL = os.getenv('SUPABASE_URL', '')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_KEY', '')
+# Construct the Edge Functions URL from the Supabase URL
+if SUPABASE_URL:
+    # Remove /rest/v1 suffix if present and add /functions/v1
+    base_url = SUPABASE_URL.replace('/rest/v1', '').rstrip('/')
+    SUPABASE_FUNCTION_URL = f"{base_url}/functions/v1"
+else:
+    SUPABASE_FUNCTION_URL = ''
+
+# Firebase Cloud Messaging (Push Notifications)
+# Get your FCM server key from Firebase Console
+FCM_SERVER_KEY = os.getenv('FCM_SERVER_KEY', '')

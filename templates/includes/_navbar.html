@@ -32,39 +32,17 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link position-relative" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-bell"></i>
-                        {% if notifications %}
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge">
-                            {{ notifications|length }}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
+                            0
                         </span>
-                        {% endif %}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationsDropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
                         <li><h6 class="dropdown-header">Notifications</h6></li>
-                        {% for notification in notifications %}
-                        <li>
-                            <a class="dropdown-item" href="{% url 'reminders:home' %}">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-clock text-warning"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-2">
-                                        <div class="fw-semibold">{{ notification.title }}</div>
-                                        <small class="text-muted">
-                                            {% if notification.due_at %}
-                                                Due: {{ notification.due_at|date:"M j, Y g:i A" }}
-                                            {% else %}
-                                                No due date
-                                            {% endif %}
-                                        </small>
-                                    </div>
-                                </div>
-                            </a>
-                        </li>
-                        {% empty %}
-                        <li><span class="dropdown-item text-muted">No notifications</span></li>
-                        {% endfor %}
+                        <div id="notificationsList">
+                            <li><span class="dropdown-item text-muted text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</span></li>
+                        </div>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-center" href="{% url 'reminders:home' %}">View All Reminders</a></li>
+                        <li><a class="dropdown-item text-center" href="{% url 'notifications:dashboard' %}">View All Notifications</a></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -95,3 +73,91 @@
         </div>
     </div>
 </nav>
+
+<script>
+// Load notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotifications();
+    
+    // Reload notifications when dropdown is opened
+    const dropdown = document.getElementById('notificationsDropdown');
+    if (dropdown) {
+        dropdown.addEventListener('click', function() {
+            loadNotifications();
+        });
+    }
+});
+
+function loadNotifications() {
+    fetch('/notifications/api/recent/')
+        .then(response => response.json())
+        .then(data => {
+            updateNotificationBadge(data.notifications.length);
+            updateNotificationsList(data.notifications);
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+            document.getElementById('notificationsList').innerHTML = 
+                '<li><span class="dropdown-item text-muted">Error loading notifications</span></li>';
+        });
+}
+
+function updateNotificationBadge(count) {
+    const badge = document.getElementById('notificationBadge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+function updateNotificationsList(notifications) {
+    const listContainer = document.getElementById('notificationsList');
+    
+    if (notifications.length === 0) {
+        listContainer.innerHTML = '<li><span class="dropdown-item text-muted text-center">No new notifications</span></li>';
+        return;
+    }
+    
+    let html = '';
+    notifications.forEach(notification => {
+        const truncatedMessage = truncateText(notification.message, 60);
+        html += `
+            <li>
+                <a class="dropdown-item" href="/notifications/" style="white-space: normal;">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <span class="me-2">${notification.icon}</span>
+                        </div>
+                        <div class="flex-grow-1" style="overflow: hidden;">
+                            <div class="fw-semibold text-truncate">${escapeHtml(notification.title)}</div>
+                            <small class="text-muted d-block" style="line-height: 1.3; max-height: 2.6em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                ${escapeHtml(truncatedMessage)}
+                            </small>
+                            <small class="text-muted d-block mt-1">${notification.created_at}</small>
+                        </div>
+                    </div>
+                </a>
+            </li>
+        `;
+    });
+    
+    listContainer.innerHTML = html;
+}
+
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) {
+        return text;
+    }
+    return text.substring(0, maxLength - 3) + '...';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
