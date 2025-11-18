@@ -79,6 +79,15 @@ def savings_goals_view(request):
             
             active_goals = active_response.data if active_response.data else []
             
+            # Calculate progress for each active goal
+            for goal in active_goals:
+                current = Decimal(str(goal.get('current_amount', 0)))
+                target = Decimal(str(goal.get('target_amount', 1)))  # Avoid division by zero
+                
+                goal['progress_percentage'] = float((current / target) * 100) if target > 0 else 0
+                goal['is_complete'] = current >= target
+                goal['remaining_amount'] = target - current
+            
             # Get completed goals
             completed_response = supabase.table('savings_goals')\
                 .select('*')\
@@ -88,6 +97,15 @@ def savings_goals_view(request):
                 .execute()
             
             completed_goals = completed_response.data if completed_response.data else []
+            
+            # Calculate progress for completed goals too
+            for goal in completed_goals:
+                current = Decimal(str(goal.get('current_amount', 0)))
+                target = Decimal(str(goal.get('target_amount', 1)))
+                
+                goal['progress_percentage'] = float((current / target) * 100) if target > 0 else 0
+                goal['is_complete'] = True  # Already completed
+                goal['remaining_amount'] = target - current
             
             # Calculate statistics
             total_target = sum(Decimal(str(g.get('target_amount', 0))) for g in active_goals)
@@ -103,12 +121,22 @@ def savings_goals_view(request):
             total_saved = Decimal('0.00')
             messages.error(request, "⚠️ Failed to load savings goals from database.")
         
+        # Get wallet balance to show available funds for savings
+        try:
+            from expenses.views import get_wallet_balance
+            wallet_info = get_wallet_balance(user_id)
+            available_for_savings = wallet_info['closing_balance']
+        except Exception as e:
+            logger.warning(f"Could not fetch wallet balance: {e}")
+            available_for_savings = Decimal('0.00')
+        
         context = {
             'form': form,
             'active_goals': active_goals,
             'completed_goals': completed_goals,
             'total_target': total_target,
             'total_saved': total_saved,
+            'available_for_savings': available_for_savings,
         }
         
         return render(request, 'savings_goals/goals.html', context)
@@ -276,10 +304,52 @@ def add_savings_view(request, goal_id):
         try:
             current_amount = Decimal(str(goal['current_amount']))
             new_amount = current_amount + amount
+            target_amount = Decimal(str(goal['target_amount']))
             
-            # Update goal in Supabase
+            # Check if user has enough in wallet balance
+            from expenses.views import get_wallet_balance
+            wallet_info = get_wallet_balance(user_id)
+            
+            if amount > wallet_info['closing_balance']:
+                messages.error(request, 
+                             f"⚠️ Insufficient funds! You only have ₱{wallet_info['closing_balance']:.2f} available in your wallet. "
+                             f"Cannot transfer ₱{amount:.2f} to savings.")
+                return redirect('savings_goals:goals')
+            
+            # Create expense record to deduct from wallet (Category: Savings Transfer)
+            from datetime import datetime, timezone as tz
+            expense_data = {
+                'user_id': user_id,
+                'amount': float(amount),
+                'category': 'Savings',
+                'date': datetime.now(tz.utc).date().isoformat(),
+                'notes': f"Transfer to '{goal['name']}' savings goal" + (f" - {notes}" if notes else ""),
+                'created_at': datetime.now(tz.utc).isoformat(),
+                'updated_at': datetime.now(tz.utc).isoformat()
+            }
+            
+            # Insert expense (deducts from wallet)
+            expense_response = supabase.table('expenses').insert(expense_data).execute()
+            
+            if not expense_response.data:
+                raise Exception("Failed to create expense record")
+            
+            # Determine if goal is now completed
+            new_status = 'completed' if new_amount >= target_amount else 'active'
+            
+            # Update goal in Supabase with new amount and status
+            update_data = {
+                'current_amount': str(new_amount),
+                'status': new_status
+            }
+            
+            # Add completed_at timestamp if just completed
+            if new_status == 'completed' and goal['status'] != 'completed':
+                from datetime import datetime
+                update_data['completed_at'] = datetime.now(timezone.utc).isoformat()
+            
             update_response = supabase.table('savings_goals')\
-                .update({'current_amount': str(new_amount)})\
+                .update(update_data)\
                 .eq('id', goal_id)\
                 .execute()
             
@@ -292,11 +362,51 @@ def add_savings_view(request, goal_id):
             }
             supabase.table('savings_transactions').insert(transaction_data).execute()
             
-            logger.info(f"Added ₱{amount} to goal {goal_id} for user {user_id}")
-            messages.success(request, f"✅ Added ₱{amount} to '{goal['name']}'! Current: ₱{new_amount}")
+            logger.info(f"Added ₱{amount} to goal {goal_id} for user {user_id}. Deducted from wallet balance.")
+            
+            # Show success message with wallet balance info
+            remaining_balance = wallet_info['closing_balance'] - amount
+            messages.success(request, 
+                           f"✅ Added ₱{amount:.2f} to '{goal['name']}'! "
+                           f"Current savings: ₱{new_amount:.2f}. "
+                           f"Remaining wallet balance: ₱{remaining_balance:.2f}")
+            
+            # Calculate progress percentage for milestone alerts
+            target_amount = Decimal(str(goal['target_amount']))
+            progress_percentage = float((new_amount / target_amount) * 100) if target_amount > 0 else 0
+            
+            # Get user email from Supabase
+            try:
+                user_response = supabase.table('login_user').select('email').eq('id', user_id).execute()
+                user_email = user_response.data[0]['email'] if user_response.data else None
+            except Exception as e:
+                logger.warning(f"Could not fetch user email for alerts: {e}")
+                user_email = None
+            
+            # Lazy import to avoid circular imports
+            from notifications.services import GoalAlertService
+            
+            # Check and send milestone alerts
+            GoalAlertService.check_and_send_milestone_alerts(
+                goal_id=goal_id,
+                user_id=user_id,
+                progress_percentage=progress_percentage,
+                user_email=user_email
+            )
+            
+            # Check deadline alerts
+            if goal.get('target_date'):
+                from datetime import datetime
+                target_date = datetime.fromisoformat(goal['target_date']).date() if isinstance(goal['target_date'], str) else goal['target_date']
+                GoalAlertService.check_deadline_alerts(
+                    goal_id=goal_id,
+                    user_id=user_id,
+                    target_date=target_date,
+                    goal_name=goal['name'],
+                    user_email=user_email
+                )
             
             # Check if goal is now complete
-            target_amount = Decimal(str(goal['target_amount']))
             if new_amount >= target_amount and goal['status'] != 'completed':
                 messages.success(request, f"🎉 Congratulations! You've reached your goal for '{goal['name']}'!")
             

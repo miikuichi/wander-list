@@ -91,8 +91,49 @@ def reminders_page(request):
                 # is_completed defaults to false in DB
             }
             try:
-                supabase.table('reminders').insert(payload).execute()
+                result = supabase.table('reminders').insert(payload).execute()
+                reminder_id = result.data[0]['id'] if result.data else None
                 messages.success(request, 'Reminder created.')
+                
+                # NEW: Send notifications if requested
+                if (notify_email or notify_in_app) and reminder_id:
+                    try:
+                        # Get user email
+                        user_response = supabase.table('login_user').select('email').eq('id', user_id).execute()
+                        user_email = user_response.data[0]['email'] if user_response.data else None
+                        
+                        # Import notification service
+                        import sys
+                        import os
+                        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                        from notifications.services import NotificationService
+                        
+                        # Determine notification types
+                        notification_types = []
+                        if notify_in_app:
+                            notification_types.append('dashboard')
+                        if notify_email:
+                            notification_types.append('email')
+                        
+                        # Format due date for message
+                        due_date_msg = f" due {due_at_iso}" if due_at_iso else ""
+                        
+                        # Send notification
+                        NotificationService.send_notification(
+                            user_id=user_id,
+                            title=f"📅 Reminder Set: {title}",
+                            message=f"Your reminder '{title}' has been created{due_date_msg}.\nFrequency: {frequency or 'Once'}",
+                            category='reminder',
+                            notification_types=notification_types,
+                            related_object_type='reminder',
+                            related_object_id=reminder_id,
+                            user_email=user_email,
+                        )
+                    except Exception as notif_error:
+                        # Don't fail the reminder creation if notification fails
+                        import logging
+                        logging.getLogger(__name__).error(f"Failed to send reminder notification: {notif_error}")
+                
             except Exception as e:
                 messages.error(request, f'Failed to create reminder: {e}')
 

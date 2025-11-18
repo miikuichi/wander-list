@@ -1,4 +1,4 @@
-{% extends 'dashboard/dashboard.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block content %}
@@ -87,7 +87,7 @@
             <!-- Notifications -->
             <div class="row g-3 mt-1">
               <div class="col-12">
-                <label class="form-label">Notifications</label>
+                <label class="form-label">Notification Channels</label>
                 <div class="d-flex flex-wrap gap-3">
                   <div class="form-check">
                     {{ form.notify_dashboard }}
@@ -102,10 +102,18 @@
                     {{ form.notify_push.label_tag }}
                   </div>
                 </div>
+                <div class="form-text mt-2">
+                  <i class="fas fa-info-circle"></i> 
+                  <strong>Notification Bell:</strong> Shows alerts in the notification bell dropdown (top-right corner)<br>
+                  <i class="fas fa-info-circle"></i> 
+                  <strong>Email:</strong> Sends alerts to your email address<br>
+                  <i class="fas fa-info-circle"></i> 
+                  <strong>Push:</strong> Sends push notifications to your mobile device (requires setup)
+                </div>
               </div>
             </div>
 
-            <!-- Hidden field for active status -->
+            <!-- Hidden field for active status (always true for new alerts) -->
             {{ form.active }}
 
             <div class="mt-4 d-flex gap-2">
@@ -139,9 +147,10 @@
                     <td>₱{{ a.amount_limit }}</td>
                     <td>{{ a.threshold_percent }}%</td>
                     <td>
-                      {% if a.notify_dashboard %}Dashboard{% endif %}
-                      {% if a.notify_email %}{% if a.notify_dashboard %}, {% endif %}Email{% endif %}
-                      {% if a.notify_push %}{% if a.notify_dashboard or a.notify_email %}, {% endif %}Push{% endif %}
+                      {% if a.notify_dashboard %}<span class="badge bg-info"><i class="fas fa-bell"></i> Bell</span>{% endif %}
+                      {% if a.notify_email %} <span class="badge bg-primary"><i class="fas fa-envelope"></i> Email</span>{% endif %}
+                      {% if a.notify_push %} <span class="badge bg-success"><i class="fas fa-mobile-alt"></i> Push</span>{% endif %}
+                      {% if not a.notify_dashboard and not a.notify_email and not a.notify_push %}<span class="text-muted">None</span>{% endif %}
                     </td>
                     <td>
                       {% if a.active %}

@@ -8,19 +8,28 @@ class SupabaseAuthMiddleware:
         self.get_response = get_response
         
     def __call__(self, request):
+        # Check if user is authenticated
+        is_authenticated = 'user_id' in request.session
+        
         # Paths that don't require authentication
-        exempt_paths = [
+        public_paths = [
             '/login/',
             '/login/register/',
             '/login/bridge/',
+            '/login/callback/',
+            '/login/google/',
             '/admin/',
         ]
         
-        # Check if the path is exempt
-        path_is_exempt = any(request.path.startswith(path) for path in exempt_paths)
+        # Check if the path is public
+        path_is_public = any(request.path.startswith(path) for path in public_paths)
+        
+        # If user is authenticated and trying to access login/register, redirect to dashboard
+        if is_authenticated and request.path in ['/login/', '/login/register/']:
+            return redirect('dashboard')
         
         # If path needs authentication and user is not authenticated, redirect to login
-        if not path_is_exempt and 'user_id' not in request.session:
+        if not path_is_public and not is_authenticated:
             return redirect('login:login_page')
             
         # Add user info to request for templates

@@ -229,6 +229,10 @@ def dashboard_view(request):
                 .execute()
             
             if alerts_result.data:
+                # Import notification service and model
+                from notifications.services import NotificationService
+                from notifications.models import NotificationLog
+                
                 for alert in alerts_result.data:
                     category = alert['category']
                     spent = category_totals.get(category, Decimal('0.00'))
@@ -238,17 +242,35 @@ def dashboard_view(request):
                     
                     if spent >= threshold_amount:
                         percentage = min((spent / limit * 100) if limit > 0 else 0, 100)
-                        triggered_alerts.append({
-                            'category': category,
-                            'spent': spent,
-                            'limit': limit,
-                            'percentage': round(float(percentage), 1),
-                            'threshold': threshold_percent
-                        })
+                        
+                        # Check if we already sent a notification today for this category
+                        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                        existing_notification = NotificationLog.objects.filter(
+                            user_id=user_id,
+                            category='budget_alert',
+                            related_object_type='budget_alert',
+                            title__icontains=category,
+                            created_at__gte=today_start
+                        ).exists()
+                        
+                        # Only create notification if we haven't sent one today
+                        if not existing_notification:
+                            try:
+                                NotificationService.create_budget_alert_notification(
+                                    user_id=user_id,
+                                    category=category,
+                                    spent=float(spent),
+                                    limit=float(limit),
+                                    percentage=float(percentage),
+                                    threshold=threshold_percent,
+                                    user_email=email,
+                                )
+                                logger.info(f"Created budget alert notification for user {user_id}, category {category}")
+                            except Exception as notif_error:
+                                logger.error(f"Failed to create budget alert notification: {notif_error}")
             
         except Exception as e:
             logger.error(f"Error checking budget alerts for user {user_id}: {e}", exc_info=True)
-            triggered_alerts = []
         
         # ===== NOTIFICATIONS (REMINDERS) =====
         try:
@@ -292,8 +314,6 @@ def dashboard_view(request):
             'total_savings_current': total_savings_current,
             # Recent activity
             'recent_expenses': recent_expenses,
-            # Alerts
-            'triggered_alerts': triggered_alerts,
             # Notifications
             'notifications': notifications,
         }

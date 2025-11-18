@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Notification Preferences - PisoHeroes{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <a href="{% url 'notifications:dashboard' %}" class="btn btn-sm btn-outline-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Back to Notifications
+        </a>
+        <h2><i class="bi bi-gear"></i> Notification Preferences</h2>
+        <p class="text-muted">Manage how you receive notifications</p>
+    </div>
+
+    <!-- Preferences Form -->
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="row">
+            <!-- Email Notifications -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-envelope"></i> Email Notifications</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="email_enabled" 
+                                   name="email_enabled" {% if preferences.email_enabled %}checked{% endif %}>
+                            <label class="form-check-label fw-bold" for="email_enabled">
+                                Enable Email Notifications
+                            </label>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6 class="text-muted mb-3">Send emails for:</h6>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="email_budget_alerts" 
+                                   name="email_budget_alerts" {% if preferences.email_budget_alerts %}checked{% endif %}>
+                            <label class="form-check-label" for="email_budget_alerts">
+                                Budget alerts
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="email_goal_milestones" 
+                                   name="email_goal_milestones" {% if preferences.email_goal_milestones %}checked{% endif %}>
+                            <label class="form-check-label" for="email_goal_milestones">
+                                Savings goal milestones
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="email_goal_deadlines" 
+                                   name="email_goal_deadlines" {% if preferences.email_goal_deadlines %}checked{% endif %}>
+                            <label class="form-check-label" for="email_goal_deadlines">
+                                Savings goal deadlines
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="email_reminders" 
+                                   name="email_reminders" {% if preferences.email_reminders %}checked{% endif %}>
+                            <label class="form-check-label" for="email_reminders">
+                                Reminders
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Push Notifications -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-phone"></i> Push Notifications</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="push_enabled" 
+                                   name="push_enabled" {% if preferences.push_enabled %}checked{% endif %}>
+                            <label class="form-check-label fw-bold" for="push_enabled">
+                                Enable Push Notifications
+                            </label>
+                        </div>
+                        
+                        {% if not preferences.fcm_token %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Push notifications require browser permission. 
+                            <button type="button" class="btn btn-sm btn-primary" id="request-permission-btn">
+                                Request Permission
+                            </button>
+                        </div>
+                        {% endif %}
+                        
+                        <hr>
+                        
+                        <h6 class="text-muted mb-3">Send push notifications for:</h6>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="push_budget_alerts" 
+                                   name="push_budget_alerts" {% if preferences.push_budget_alerts %}checked{% endif %}>
+                            <label class="form-check-label" for="push_budget_alerts">
+                                Budget alerts
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="push_goal_milestones" 
+                                   name="push_goal_milestones" {% if preferences.push_goal_milestones %}checked{% endif %}>
+                            <label class="form-check-label" for="push_goal_milestones">
+                                Savings goal milestones
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="push_goal_deadlines" 
+                                   name="push_goal_deadlines" {% if preferences.push_goal_deadlines %}checked{% endif %}>
+                            <label class="form-check-label" for="push_goal_deadlines">
+                                Savings goal deadlines
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="push_reminders" 
+                                   name="push_reminders" {% if preferences.push_reminders %}checked{% endif %}>
+                            <label class="form-check-label" for="push_reminders">
+                                Reminders
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary btn-lg px-5">
+                <i class="bi bi-check-circle"></i> Save Preferences
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Request push notification permission (placeholder - requires Firebase setup)
+document.getElementById('request-permission-btn')?.addEventListener('click', function() {
+    if ('Notification' in window) {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                alert('Push notifications enabled! Please integrate Firebase Cloud Messaging.');
+            }
+        });
+    } else {
+        alert('Push notifications are not supported in your browser.');
+    }
+});
+</script>
+{% endblock %}

@@ -5,16 +5,135 @@
 {% block content %}
 <main class="container-fluid flex-grow-1 dashboard-content"> 
     
-    <h1 class="dashboard-title">Log Expense</h1> 
+    <h1 class="dashboard-title">Log Expense</h1>
+
+    <!-- Wallet Balance Summary Card -->
+    <div class="card mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="card-body">
+            <h3 class="mb-3"><i class="fas fa-wallet"></i> Today's Wallet Balance</h3>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <small class="d-block opacity-75">Opening Balance</small>
+                    <h4 class="mb-0">₱{{ wallet.opening_balance|floatformat:2 }}</h4>
+                    <small class="opacity-75">Carried from yesterday</small>
+                </div>
+                <div class="col-md-3">
+                    <small class="d-block opacity-75">Daily Allowance</small>
+                    <h4 class="mb-0">+ ₱{{ wallet.daily_allowance|floatformat:2 }}</h4>
+                    <small class="opacity-75">Today's base budget</small>
+                </div>
+                <div class="col-md-3">
+                    <small class="d-block opacity-75">Extra Income</small>
+                    <h4 class="mb-0">+ ₱{{ wallet.daily_income|floatformat:2 }}</h4>
+                    <small class="opacity-75">Tips, gifts, etc.</small>
+                </div>
+                <div class="col-md-3">
+                    <small class="d-block opacity-75">Total Available</small>
+                    <h4 class="mb-0 fw-bold">₱{{ wallet.total_available|floatformat:2 }}</h4>
+                </div>
+            </div>
+            <hr class="my-3 opacity-25">
+            <div class="row">
+                <div class="col-md-6">
+                    <small class="d-block opacity-75">Spent Today</small>
+                    <h4 class="mb-0 text-warning">- ₱{{ wallet.today_expenses|floatformat:2 }}</h4>
+                </div>
+                <div class="col-md-6">
+                    <small class="d-block opacity-75">Remaining (Carries to Tomorrow)</small>
+                    <h3 class="mb-0 fw-bold {% if wallet.closing_balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                        ₱{{ wallet.closing_balance|floatformat:2 }}
+                    </h3>
+                    <small class="opacity-75">{{ wallet.percent_used|floatformat:0 }}% used</small>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="g-4 mb-4 content-panels">
-        
-            <div class="card log-expense-card h-100">
-                <div class="card-body">
-                    <h2>Log New Expense</h2>
-                    <p class="card-subtitle">Quickly add and categorize your daily expenses to keep track of your spending.</p>
+        <div class="row g-4">
+            <!-- Add Income Card (First) -->
+            <div class="col-12">
+                <div class="card log-income-card">
+                    <div class="card-body">
+                        <h2><i class="fas fa-plus-circle text-success"></i> Add Extra Income</h2>
+                        <p class="card-subtitle">Log tips, gifts, side hustles, and other income to boost your daily budget.</p>
 
-                    <form method="post" action="" class="expense-form">
+                        <form method="post" action="{% url 'add_income' %}" class="income-form">
+                            {% csrf_token %}
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="income-amount">Amount:</label>
+                                        <div class="input-with-icon">
+                                            <span>₱</span>
+                                            <input type="number" 
+                                                   id="income-amount" 
+                                                   name="amount" 
+                                                   step="0.01" 
+                                                   min="0.01" 
+                                                   max="999999999.99"
+                                                   class="form-control" 
+                                                   placeholder="0.00"
+                                                   required>
+                                        </div>
+                                        <small class="form-text text-muted">Enter income amount</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="income-source">Source:</label>
+                                        <select id="income-source" name="source" class="form-control" required>
+                                            <option value="">-- Select Source --</option>
+                                            {% for source in income_sources %}
+                                                <option value="{{ source }}">{{ source }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-3">
+                                <label for="income-date">Date:</label>
+                                <input type="date" 
+                                       id="income-date" 
+                                       name="date" 
+                                       class="form-control" 
+                                       value="{% now 'Y-m-d' %}" 
+                                       max="{% now 'Y-m-d' %}"
+                                       required>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i> Income is added to your wallet balance.
+                                </small>
+                            </div>
+
+                            <div class="form-group mt-3">
+                                <label for="income-notes">Notes (optional):</label>
+                                <textarea id="income-notes" 
+                                          name="notes" 
+                                          class="form-control" 
+                                          rows="3" 
+                                          placeholder="Add any additional details..."></textarea>
+                            </div>
+
+                            <div class="form-actions d-flex justify-content-end gap-3 mt-4">
+                                <button type="reset" class="btn btn-outline-secondary">Clear Form</button>
+                                <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Income</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log New Expense Card (Second) -->
+            <div class="col-12">
+                <div class="card log-expense-card">
+                    <div class="card-body">
+                        <h2><i class="fas fa-minus-circle text-danger"></i> Log New Expense</h2>
+                        <p class="card-subtitle">Quickly add and categorize your daily expenses to keep track of your spending.</p>
+
+                        <form method="post" action="" class="expense-form">
                         {% csrf_token %}
 
                         <div class="row g-3">
@@ -57,7 +176,11 @@
                                    name="date" 
                                    class="form-control" 
                                    value="{% now 'Y-m-d' %}" 
+                                   max="{% now 'Y-m-d' %}"
                                    required>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> Defaults to today. Daily allowance tracking is based on expense date.
+                            </small>
                         </div>
 
                         <div class="form-group mt-3">
@@ -113,10 +236,13 @@
                     </script>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="card recent-expenses-card h-100">
-                <div class="card-body">
-                    <h2 class="card-header mb-3">Recent Expenses</h2>
+    <!-- Recent Expenses Section -->
+    <div class="card recent-expenses-card mt-4 mb-4">
+        <div class="card-body">
+            <h2 class="mb-3"><i class="fas fa-receipt"></i> Recent Expenses</h2>
                     
                     <div class="expense-list">
                         {% for expense in recent_expenses %}
@@ -150,13 +276,16 @@
                                 </div>
                             </div>
                         {% empty %}
-                            <div class="text-muted">No expenses yet. Start tracking your spending!</div>
+                            <div class="text-muted text-center py-4">
+                                <i class="fas fa-inbox fa-3x mb-3 text-muted"></i>
+                                <p>No expenses yet. Start tracking your spending!</p>
+                            </div>
                         {% endfor %}
                     </div>
                 
-                </div>
-            </div>
+        </div>
     </div>
+</main>
 
     <!-- Edit Expense Modal -->
     <div class="modal fade" id="editExpenseModal" tabindex="-1" aria-labelledby="editExpenseModalLabel" aria-hidden="true">
@@ -267,5 +396,4 @@
             return true;
         });
     </script>
-</main>
 {% endblock %}

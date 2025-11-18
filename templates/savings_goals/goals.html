@@ -10,7 +10,7 @@
 
     <!-- Summary Statistics -->
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="text-muted">Active Goals</h6>
@@ -18,7 +18,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="text-muted">Total Target</h6>
@@ -26,11 +26,20 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="text-muted">Total Saved</h6>
                     <h2 class="text-success">₱{{ total_saved|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 border-warning">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">💰 Available Wallet</h6>
+                    <h2 class="text-warning">₱{{ available_for_savings|floatformat:2 }}</h2>
+                    <small class="text-muted">Available to transfer</small>
                 </div>
             </div>
         </div>
@@ -270,6 +279,11 @@
                 <div class="modal-body">
                     <p class="mb-3">Adding savings to: <strong id="modal-goal-name"></strong></p>
                     
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-wallet me-2"></i>
+                        <strong>Available wallet balance:</strong> ₱{{ available_for_savings|floatformat:2 }}
+                    </div>
+                    
                     <div class="mb-3">
                         <label for="savings-amount" class="form-label">Amount to Add (₱)</label>
                         <div class="input-group">
@@ -279,9 +293,11 @@
                                    name="amount" 
                                    class="form-control" 
                                    step="0.01" 
-                                   min="0.01" 
+                                   min="0.01"
+                                   max="{{ available_for_savings }}"
                                    required>
                         </div>
+                        <small class="text-muted">Maximum: ₱{{ available_for_savings|floatformat:2 }}</small>
                     </div>
 
                     <div class="mb-3">
@@ -409,10 +425,17 @@ document.getElementById('createGoalForm').addEventListener('submit', function(e)
 // Add Savings Form Validation
 document.getElementById('addSavingsForm').addEventListener('submit', function(e) {
     const amount = parseFloat(document.getElementById('savings-amount').value);
+    const availableBalance = parseFloat('{{ available_for_savings }}');
     
     if (isNaN(amount) || amount <= 0) {
         e.preventDefault();
         alert('⚠️ Please enter a valid amount greater than zero.');
+        return false;
+    }
+    
+    if (amount > availableBalance) {
+        e.preventDefault();
+        alert(`⚠️ Insufficient funds! You only have ₱${availableBalance.toFixed(2)} available in your wallet.`);
         return false;
     }
     
