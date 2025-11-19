@@ -450,6 +450,14 @@ body {
     font-size: 0.95em;
 }
 
+/* Wallet Balance Specific Styles */
+.remaining-balance-positive {
+    /* Set the color to a custom green shade */
+    color: #22e5b4ff !important; 
+    /* The !important flag ensures it overrides any default Bootstrap colors 
+       that might be applied by other classes. */
+}
+
 /* Form Styles (Adjusting existing form styles) */
 .expense-form .form-group {
     margin-bottom: 20px;

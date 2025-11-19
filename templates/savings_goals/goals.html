@@ -14,7 +14,7 @@
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="text-muted">Active Goals</h6>
-                    <h2 class="text-primary">{{ active_goals.count }}</h2>
+                    <h2 class="text-primary">{{ active_goals|length }}</h2>
                 </div>
             </div>
         </div>
@@ -158,13 +158,13 @@
                                             <span class="text-muted">₱{{ goal.target_amount|floatformat:2 }}</span>
                                         </div>
                                         <div class="progress" style="height: 20px;">
-                                            <div class="progress-bar {% if goal.is_complete %}bg-success{% else %}bg-primary{% endif %}" 
-                                                 role="progressbar" 
-                                                 style="width: {{ goal.progress_percentage }}%;" 
-                                                 aria-valuenow="{{ goal.progress_percentage }}" 
-                                                 aria-valuemin="0" 
+                                            <div class="progress-bar {% if goal.is_complete %}bg-success{% else %}bg-primary{% endif %}"
+                                                 role="progressbar"
+                                                 style="width: {{ goal.progress_percentage }}%;"
+                                                 aria-valuenow="{{ goal.progress_percentage }}"
+                                                 aria-valuemin="0"
                                                  aria-valuemax="100">
-                                                {{ goal.progress_percentage }}%
+                                                {{ goal.progress_percentage|floatformat:2 }}%
                                             </div>
                                         </div>
                                         <small class="text-muted">₱{{ goal.remaining_amount|floatformat:2 }} remaining</small>
@@ -219,9 +219,25 @@
                         <div class="col-lg-4 col-md-6">
                             <div class="card goal-card h-100 border-success">
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start mb-3">
-                                        <h5 class="card-title mb-0">{{ goal.name }} ✓</h5>
-                                        <form method="post" action="{% url 'savings_goals:delete_goal' goal.id %}" 
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title mb-0">{{ goal.name }} ✓</h5>
+                                    <div class="d-flex flex-column gap-1">
+                                        <button class="btn btn-sm btn-outline-primary edit-goal-btn"
+                                                data-goal-id="{{ goal.id }}"
+                                                data-goal-name="{{ goal.name }}"
+                                                data-goal-target="{{ goal.target_amount }}"
+                                                data-goal-description="{{ goal.description }}"
+                                                data-goal-date="{{ goal.target_date|date:'Y-m-d' }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form method="post" action="{% url 'savings_goals:reset_goal' goal.id %}"
+                                              onsubmit="return confirm('Reset this completed goal? ₱{{ goal.current_amount|floatformat:2 }} will be returned to your wallet.');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-redo"></i>
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{% url 'savings_goals:delete_goal' goal.id %}"
                                               onsubmit="return confirm('Delete this completed goal?');" class="d-inline">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -229,6 +245,7 @@
                                             </button>
                                         </form>
                                     </div>
+                                </div>
 
                                     {% if goal.description %}
                                         <p class="text-muted small mb-3">{{ goal.description|truncatewords:15 }}</p>
