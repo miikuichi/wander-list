@@ -40,7 +40,7 @@
                 </div>
                 <div class="col-md-6">
                     <small class="d-block opacity-75">Remaining (Carries to Tomorrow)</small>
-                    <h3 class="mb-0 fw-bold {% if wallet.closing_balance < 0 %}text-danger{% else %}text-success{% endif %}">
+                    <h3 class="mb-0 fw-bold {% if wallet.closing_balance < 0 %}text-danger{% else %}remaining-balance-positive{% endif %}">
                         ₱{{ wallet.closing_balance|floatformat:2 }}
                     </h3>
                     <small class="opacity-75">{{ wallet.percent_used|floatformat:0 }}% used</small>
