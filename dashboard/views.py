@@ -1,4 +1,3 @@
-# dashboard/views.py
 from django.shortcuts import render, redirect
 from django.db.models import Sum, Q
 from django.utils import timezone
@@ -127,26 +126,44 @@ def dashboard_view(request):
             days_this_month = _days_in_current_month()
         # Label: END_DAILY_ALLOWANCE
         
-        # ===== BUDGET USAGE BY CATEGORY =====
+        # ===== BUDGET USAGE BY CATEGORY (UPDATED TO SUPPORT DAILY/WEEKLY/MONTHLY) =====
         try:
-            category_spending = []
-            
-            # Get all month expenses from Supabase
-            month_expenses_data = supabase.table('expenses')\
-                .select('category, amount')\
-                .eq('user_id', user_id)\
-                .gte('date', start_of_month)\
+            # --- NEW helper to aggregate totals per category for a Supabase query result ---
+            def _totals_for_period(expenses_result):
+                totals = {}
+                if expenses_result.data:
+                    for expense in expenses_result.data:
+                        cat = expense.get('category', 'Other')
+                        amount = Decimal(str(expense.get('amount', 0)))
+                        totals[cat] = totals.get(cat, Decimal('0.00')) + amount
+                return totals
+
+            # Daily expenses (today only)
+            day_expenses_data = supabase.table('expenses') \
+                .select('category, amount') \
+                .eq('user_id', user_id) \
+                .eq('date', today_str) \
                 .execute()
-            
-            # Calculate spending per category
-            category_totals = {}
-            if month_expenses_data.data:
-                for expense in month_expenses_data.data:
-                    cat = expense.get('category', 'Other')
-                    amount = Decimal(str(expense.get('amount', 0)))
-                    category_totals[cat] = category_totals.get(cat, Decimal('0.00')) + amount
-            
-            # Get budget alerts from Supabase
+
+            # Weekly expenses (from start_of_week up to today)
+            week_expenses_data = supabase.table('expenses') \
+                .select('category, amount') \
+                .eq('user_id', user_id) \
+                .gte('date', start_of_week) \
+                .execute()
+
+            # Monthly expenses (existing behavior)
+            month_expenses_data = supabase.table('expenses') \
+                .select('category, amount') \
+                .eq('user_id', user_id) \
+                .gte('date', start_of_month) \
+                .execute()
+
+            day_category_totals = _totals_for_period(day_expenses_data)
+            week_category_totals = _totals_for_period(week_expenses_data)
+            month_category_totals = _totals_for_period(month_expenses_data)
+
+            # Get budget limits from Supabase (same limits regardless of period)
             budget_alerts_data = supabase.table('budget_alerts')\
                 .select('category, amount_limit')\
                 .eq('user_id', user_id)\
@@ -158,25 +175,43 @@ def dashboard_view(request):
                 for alert in budget_alerts_data.data:
                     budget_limits[alert['category']] = Decimal(str(alert['amount_limit']))
             
-            # Build category spending list
-            for category in CATEGORIES[:5]:  # Top 5 categories
-                spent = category_totals.get(category, Decimal('0.00'))
-                budget_limit = budget_limits.get(category, Decimal('1000.00'))
-                percentage = min((spent / budget_limit * 100) if budget_limit > 0 else 0, 100)
+            # --- NEW helper to build category_spending list for a given totals dict ---
+            def _build_category_spending(category_totals):
+                data = []
+                for category in CATEGORIES[:5]:  # Top 5 categories
+                    spent = category_totals.get(category, Decimal('0.00'))
+                    budget_limit = budget_limits.get(category, Decimal('1000.00'))
+                    percentage = min((spent / budget_limit * 100) if budget_limit > 0 else 0, 100)
+                    
+                    data.append({
+                        'name': category,
+                        'spent': spent,
+                        'budget': budget_limit,
+                        'percentage': round(float(percentage), 1)
+                    })
                 
-                category_spending.append({
-                    'name': category,
-                    'spent': spent,
-                    'budget': budget_limit,
-                    'percentage': round(float(percentage), 1)
-                })
-            
-            # Sort by spending amount
-            category_spending.sort(key=lambda x: x['spent'], reverse=True)
-            
+                # Sort by spending amount
+                data.sort(key=lambda x: x['spent'], reverse=True)
+                return data
+
+            # --- NEW: three datasets for the chart ---
+            category_spending_daily = _build_category_spending(day_category_totals)
+            category_spending_weekly = _build_category_spending(week_category_totals)
+            category_spending_monthly = _build_category_spending(month_category_totals)
+
+            # Keep this as the "default" (monthly) so older template logic still works
+            category_spending = category_spending_monthly
+
+            # This is used later in the budget alerts section (keep monthly behavior)
+            category_totals = month_category_totals
+
         except Exception as e:
             logger.error(f"Error calculating category spending for user {user_id}: {e}", exc_info=True)
             category_spending = []
+            category_spending_daily = []
+            category_spending_weekly = []
+            category_spending_monthly = []
+            category_totals = {}
         
         # ===== SAVINGS GOALS =====
         try:
@@ -306,8 +341,11 @@ def dashboard_view(request):
             'remaining_today': remaining_today,
             'week_expenses': week_expenses,
             'month_expenses': month_expenses,
-            # Budget usage
-            'category_spending': category_spending,
+            # Budget usage (NEW: multiple periods)
+            'category_spending': category_spending,  # default (monthly)
+            'category_spending_daily': category_spending_daily,
+            'category_spending_weekly': category_spending_weekly,
+            'category_spending_monthly': category_spending_monthly,
             # Savings goals
             'active_goals': active_goals,
             'total_savings_target': total_savings_target,
