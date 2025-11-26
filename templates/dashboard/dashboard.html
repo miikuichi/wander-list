@@ -162,7 +162,25 @@
                     <h5 class="card-header d-flex justify-content-between align-items-center">
                         Budget Usage <i class="fas fa-chart-pie text-muted"></i>
                     </h5>
-                    <p class="text-muted mb-3">Spending breakdown by category (this month)</p>
+
+                    <!-- NEW: period label + toggle buttons -->
+                    <div class="d-flex justify-content-between align-items-center mt-2 mb-3">
+                        <p class="text-muted mb-0">
+                            Spending breakdown by category
+                            (<span id="budget-period-text">this month</span>)
+                        </p>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Budget period selector">
+                            <button type="button" class="btn btn-outline-primary active" data-period="monthly">
+                                Monthly
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-period="weekly">
+                                Weekly
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" data-period="daily">
+                                Daily
+                            </button>
+                        </div>
+                    </div>
 
                     {% if category_spending %}
                     <div style="width:100%; max-width:420px; margin:0 auto;">
@@ -286,59 +304,130 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // Only proceed if we have monthly data (same as old check)
   {% if category_spending and category_spending|length > 0 %}
-    const labels = [{% for cat in category_spending %}"{{ cat.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
-    const dataValues = [{% for cat in category_spending %}{{ cat.spent|floatformat:2|default:"0.00" }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    // --- NEW: Prepare data from Django context for all three periods ---
+    const budgetData = {
+      daily: [
+        {% for cat in category_spending_daily %}
+        { name: "{{ cat.name|escapejs }}", spent: {{ cat.spent|floatformat:2|default:"0.00" }} }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ],
+      weekly: [
+        {% for cat in category_spending_weekly %}
+        { name: "{{ cat.name|escapejs }}", spent: {{ cat.spent|floatformat:2|default:"0.00" }} }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ],
+      monthly: [
+        {% for cat in category_spending_monthly %}
+        { name: "{{ cat.name|escapejs }}", spent: {{ cat.spent|floatformat:2|default:"0.00" }} }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    };
 
     const palette = [
       '#2b9bf4','#28c76f','#ff9f43','#ea5455','#7367f0',
       '#00cfe8','#f8686b','#a8a8a8','#ffd166','#06d6a0'
     ];
 
-    const backgroundColors = labels.map((_, i) => palette[i % palette.length]);
     const ctx = document.getElementById('budgetPieChart').getContext('2d');
+    const legendContainer = document.getElementById('budget-legend');
+    const periodTextSpan = document.getElementById('budget-period-text');
+    const periodButtons = document.querySelectorAll('[data-period]');
+    let currentPeriod = 'monthly';
+    let chartInstance = null;
 
-    if (window._budgetPieChartInstance) window._budgetPieChartInstance.destroy();
+    function renderChart(period) {
+      const items = budgetData[period] || [];
 
-    window._budgetPieChartInstance = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: dataValues,
-          backgroundColor: backgroundColors,
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'right' },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const label = context.label || '';
-                const value = context.parsed || 0;
-                const formatted = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
-                return `${label}: ${formatted}`;
+      const labels = items.map(i => i.name);
+      const dataValues = items.map(i => i.spent);
+      const backgroundColors = labels.map((_, i) => palette[i % palette.length]);
+
+      // Destroy previous instance if exists
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dataValues,
+            backgroundColor: backgroundColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.parsed || 0;
+                  const formatted = new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP'
+                  }).format(value);
+                  return `${label}: ${formatted}`;
+                }
               }
             }
           }
         }
+      });
+
+      // Build legend
+      const total = dataValues.reduce((a, b) => a + b, 0);
+      let html = '<ul class="list-unstyled mb-0">';
+      labels.forEach((label, i) => {
+        const value = dataValues[i] || 0;
+        const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+        const formattedAmt = new Intl.NumberFormat('en-PH', {
+          style: 'currency',
+          currency: 'PHP'
+        }).format(value);
+        html += `<li>
+          <span style="display:inline-block;width:12px;height:12px;background:${backgroundColors[i]};margin-right:6px;border-radius:2px;"></span>
+          ${label}: ${formattedAmt} (${pct}%)
+        </li>`;
+      });
+      html += '</ul>';
+      legendContainer.innerHTML = html;
+
+      // Update period label
+      if (period === 'daily') {
+        periodTextSpan.textContent = 'today';
+      } else if (period === 'weekly') {
+        periodTextSpan.textContent = 'this week';
+      } else {
+        periodTextSpan.textContent = 'this month';
       }
+    }
+
+    // Handle period button clicks
+    periodButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const period = btn.getAttribute('data-period');
+        if (period === currentPeriod) return;
+
+        currentPeriod = period;
+
+        // Toggle active class
+        periodButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        renderChart(period);
+      });
     });
 
-    // Optional legend below the chart
-    const legendContainer = document.getElementById('budget-legend');
-    const total = dataValues.reduce((a, b) => a + b, 0);
-    let html = '<ul class="list-unstyled mb-0">';
-    labels.forEach((label, i) => {
-      const pct = total > 0 ? ((dataValues[i] / total) * 100).toFixed(1) : 0;
-      const formattedAmt = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(dataValues[i]);
-      html += `<li><span style="display:inline-block;width:12px;height:12px;background:${backgroundColors[i]};margin-right:6px;border-radius:2px;"></span>${label}: ${formattedAmt} (${pct}%)</li>`;
-    });
-    html += '</ul>';
-    legendContainer.innerHTML = html;
+    // Initial render (monthly by default)
+    renderChart('monthly');
+
   {% endif %}
 });
 </script>
