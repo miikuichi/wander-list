@@ -9,6 +9,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from calendar import monthrange
 from supabase_service import get_service_client
 import logging
+from login.decorators import require_authentication
+from audit_logs.services import log_update
 from login.models import User
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ def _days_in_current_month(d: date | None = None) -> int:
     return monthrange(d.year, d.month)[1]
 
 
+@require_authentication
 def dashboard_view(request):
     """Display dashboard for authenticated users with real data from database.
     
@@ -370,6 +373,20 @@ def update_monthly_allowance_view(request):
 
     return redirect('dashboard')  # adjust to your URL name if different
 # Label: END_UPDATE_MONTHLY_ALLOWANCE_VIEW
+
+
+@require_authentication
+def cache_settings_view(request):
+    """Display cache management settings page."""
+    user_id = request.session.get('user_id')
+    username = request.session.get('username', 'User')
+    
+    context = {
+        'username': username,
+        'user_id': user_id,
+    }
+    
+    return render(request, 'dashboard/cache_settings.html', context)
 
 
 def admin_dashboard_view(request):

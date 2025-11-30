@@ -162,9 +162,9 @@
                     <td class="text-end">
                       <!-- Edit Button -->
                         <a href="#" class="btn btn-sm btn-outline-warning edit-alert-btn"
-                          data-url="{% url 'edit_alert' a.id %}">Edit</a>
+                          data-url="{% url 'budget_alerts:edit_alert' a.id %}">Edit</a>
                       <!-- Delete Button -->
-                      <form method="POST" action="{% url 'delete_alert' a.id %}" style="display: inline;" onsubmit="return confirmDeleteAlert('{{ a.category }}');">
+                      <form method="POST" action="{% url 'budget_alerts:delete_alert' a.id %}" style="display: inline;" onsubmit="return confirmDeleteAlert('{{ a.category }}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                       </form>

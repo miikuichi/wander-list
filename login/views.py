@@ -6,6 +6,7 @@ import logging
 from .forms import LoginForm, RegistrationForm
 from supabase_service import sign_up, sign_in, get_service_client, get_anon_client
 from .models import User
+from audit_logs.services import log_login, log_create, log_logout
 import traceback
 
 logger = logging.getLogger(__name__)
@@ -63,34 +64,41 @@ def register(request):
                         email=email,
                         defaults={
                             'username': username,
-                            'password': "hashed_via_supabase"
                         }
                     )
+                    if created:
+                        user.set_password(password)  # Hash the password
+                        user.save()
                     return render(request, 'login/register.html', {'form': form})
                 
-                # Store user in local SQLite
+                # Store user in local SQLite with hashed password
                 user, created = User.objects.get_or_create(
                     email=email,
                     defaults={
                         'username': username,
-                        'password': password  # Storing unhashed for testing
                     }
                 )
                 
-                if not created:
-                    # User already exists, update username and password
+                if created:
+                    user.set_password(password)  # Hash the password on creation
+                    user.save()
+                    # Log user creation
+                    log_create(str(user.id), 'user', user.id, {'username': username, 'email': email}, request)
+                else:
+                    # User already exists, update username and hash password
                     user.username = username
-                    user.password = password  # Update unhashed password for testing
+                    user.set_password(password)  # Hash the updated password
                     user.save()
                 
                 # ALSO insert into Supabase PostgreSQL using REST API
+                # Note: Supabase handles its own password hashing in Auth
                 try:
                     supabase_client = get_service_client()
                     supabase_client.table('login_user').upsert({
                         'id': user.id,
                         'username': username,
                         'email': email,
-                        'password': password  # Unhashed for testing
+                        # Don't store password in Supabase table - it's in Supabase Auth
                     }).execute()
                     logger.info(f"User {email} saved to Supabase PostgreSQL")
                 except Exception as db_error:
@@ -205,6 +213,46 @@ def login_view(request):
                 print("DEBUG: Step 2 - Syncing with local SQLite database...")
                 try:
                     user = User.objects.get(email=email)
+<<<<<<< HEAD
+                    
+                    # Verify password matches (supports auto-upgrade from plaintext)
+                    if not user.check_password(password):
+                        raise ValueError("Invalid password")
+                    
+                    # Store authentication info in session
+                    request.session['user_id'] = user.id
+                    request.session['username'] = user.username
+                    request.session['email'] = email
+                    
+                    if access_token:
+                        request.session['supabase_access_token'] = access_token
+                    
+                    logger.info(f"User {email} logged in successfully")
+                    # Log successful login
+                    log_login(str(user.id), success=True, metadata={'email': email}, request=request)
+                    messages.success(request, f"Welcome back, {user.username}!")
+                    return redirect('dashboard')
+                except User.DoesNotExist:
+                    # User exists in Supabase but not in our local DB
+                    # Create the user in our database
+                    username = email.split('@')[0]  # Default username from email
+                    user = User(username=username, email=email)
+                    user.set_password(password)  # Hash the password
+                    user.save()
+                    
+                    request.session['user_id'] = user.id
+                    request.session['username'] = username
+                    request.session['email'] = email
+                    
+                    if access_token:
+                        request.session['supabase_access_token'] = access_token
+                    
+                    logger.info(f"New user {email} created from Supabase Auth")
+                    # Log creation and login
+                    log_create(str(user.id), 'user', user.id, {'username': username, 'email': email, 'source': 'supabase_auth'}, request)
+                    log_login(str(user.id), success=True, metadata={'email': email}, request=request)
+                    messages.success(request, f"Welcome, {username}!")
+=======
                     print(f"DEBUG: Local user found: {user.username} (ID: {user.id})")
                     welcome_message = f"Welcome back, {user.username}!"
                 except User.DoesNotExist:
@@ -269,6 +317,7 @@ def login_view(request):
                     return redirect('admin_dashboard')
                 else:
                     print("DEBUG: Redirecting to USER dashboard.")
+>>>>>>> origin/main
                     return redirect('dashboard')
 
             except Exception as e:
@@ -283,6 +332,10 @@ def login_view(request):
                 
                 # This prints the full stack trace to your terminal
                 traceback.print_exc()
+<<<<<<< HEAD
+                # Log failed login attempt
+                log_login(email, success=False, metadata={'error': str(e)}, request=request)
+=======
                 
                 print("-" * 20 + " TRACEBACK END " + "-" * 20)
                 print("="*50 + "\n")
@@ -290,6 +343,7 @@ def login_view(request):
                 # Also log to Django's standard logging (good for production logs)
                 logger.error(f"Login View Exception: {e}", exc_info=True)
                 
+>>>>>>> origin/main
                 messages.error(request, f"Login failed: {str(e)}")
                 # Stay on login page
         else:
@@ -351,6 +405,38 @@ def oauth_callback(request):
         user_metadata = user_data.user_metadata or {}
         username = user_metadata.get('name', email.split('@')[0])
         
+<<<<<<< HEAD
+        # Store user in local SQLite (OAuth users don't need password hash)
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'username': username,
+            }
+        )
+        
+        if created:
+            # Set a special marker for OAuth users (hashed for consistency)
+            user.set_password('oauth_google_no_password')
+            user.save()
+        else:
+            # Update existing user to indicate OAuth login
+            user.username = username
+            user.save()
+        
+        # Store in Supabase PostgreSQL (no password field for OAuth users)
+        try:
+            supabase.table('login_user').upsert({
+                'id': user.id,
+                'username': username,
+                'email': email,
+            }).execute()
+            logger.info(f"OAuth user {email} saved to Supabase")
+        except Exception as db_error:
+            logger.error(f"Failed to save OAuth user to Supabase: {db_error}")
+        
+        # Create session
+        request.session['user_id'] = user.id
+=======
         # ---------------------------------------------------------
         # CRITICAL FIX: Fetch REAL ID from Supabase 'login_user'
         # ---------------------------------------------------------
@@ -443,6 +529,7 @@ def oauth_callback(request):
         # SESSION SETUP (Use Remote ID)
         # ---------------------------------------------------------
         request.session['user_id'] = remote_user_id  # <--- THE FIX
+>>>>>>> origin/main
         request.session['username'] = username
         request.session['email'] = email
         request.session['is_admin'] = is_admin
@@ -464,6 +551,11 @@ def oauth_callback(request):
 
 def logout_and_redirect(request):
     """Log out user from both Django session and Supabase"""
+    # Log the logout before clearing session
+    user_id = request.session.get('user_id')
+    if user_id:
+        log_logout(str(user_id), request=request)
+    
     # Clear all session data
     request.session.flush()
     return redirect('login:login_page')

@@ -51,18 +51,33 @@
                                     0
                                 </span>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationsDropdown" style="min-width: 300px; max-height: 400px; overflow-y: auto;">
+                            <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationsDropdown" style="min-width: 300px; max-height: 450px; overflow-y: auto;">
                                 <li><h6 class="dropdown-header">Notifications</h6></li>
                                 <div id="notificationsList">
                                     <li><span class="dropdown-item text-muted text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</span></li>
                                 </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-center" href="{% url 'notifications:dashboard' %}">View All Notifications</a></li>
+                                <li id="markAllFooter" style="display: none;">
+                                    <div class="dropdown-footer bg-light border-top p-2 text-center">
+                                        <button class="btn btn-sm btn-success w-100" onclick="markAllAsRead()">
+                                            <i class="fas fa-check-double"></i> Mark All as Read
+                                        </button>
+                                    </div>
+                                </li>
                             </ul>
                         </li>
                         
                         <li class="nav-item">
                             <a class="nav-link" href="#"><i class="fas fa-cog"></i></a>
+                        </li>
+                        <li class="nav-item">
+                            <div class="dark-mode-toggle nav-link">
+                                <label for="darkModeToggle">
+                                    <i class="fas fa-moon"></i>
+                                </label>
+                                <input type="checkbox" id="darkModeToggle">
+                            </div>
                         </li>
                     {% endif %}
 
@@ -78,6 +93,7 @@
                             {% else %}
                                 <li><a class="dropdown-item" href="#">Profile</a></li>
                                 <li><a class="dropdown-item" href="#">Settings</a></li>
+                                <li><a class="dropdown-item" href="{% url 'audit_logs:audit_logs' %}"><i class="fas fa-clipboard-list"></i> Audit Logs</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'login:logout' %}">Logout</a></li>
                             {% endif %}
@@ -132,12 +148,16 @@ function loadNotifications() {
 
 function updateNotificationBadge(count) {
     const badge = document.getElementById('notificationBadge');
+    const markAllFooter = document.getElementById('markAllFooter');
+    
     if (badge) {
         if (count > 0) {
             badge.textContent = count;
             badge.style.display = 'inline-block';
+            if (markAllFooter) markAllFooter.style.display = 'block';
         } else {
             badge.style.display = 'none';
+            if (markAllFooter) markAllFooter.style.display = 'none';
         }
     }
 }
@@ -174,6 +194,44 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function markAllAsRead() {
+    fetch('/notifications/api/mark-all-read/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload notifications to update UI
+            loadNotifications();
+        } else {
+            alert('Failed to mark all notifications as read');
+        }
+    })
+    .catch(error => {
+        console.error('Error marking all as read:', error);
+        alert('Error marking all notifications as read');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 </script>
 {% endif %}

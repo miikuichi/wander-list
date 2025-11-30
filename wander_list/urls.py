@@ -32,6 +32,8 @@ urlpatterns = [
     path('savings-goals/', include('savings_goals.urls')),
     path('reminders/', include('reminders.urls')),
     path('notifications/', include('notifications.urls')),  # Notification system
+    path('analytics/', include('analytics.urls')),  # Visual Reports & Analytics
+    path('audit-logs/', include('audit_logs.urls')),  # Audit Logging System
     
     #Redirect the root path (http://127.0.0.1:8000/) to /login/
     path('', RedirectView.as_view(url='/login/', permanent=True)),

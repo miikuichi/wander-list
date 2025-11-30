@@ -245,3 +245,42 @@ def send_test_email(request):
     
     return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
 
+
+def mark_all_as_read(request):
+    """Mark all unread notifications as read for the current user."""
+    user_id = request.session.get('user_id')
+    
+    if not user_id:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    if request.method == 'POST':
+        try:
+            # Get all unread notifications for the user
+            unread_notifications = NotificationService.get_user_notifications(
+                user_id=user_id,
+                unread_only=True,
+                limit=1000
+            )
+            
+            # Mark each as read
+            marked_count = 0
+            for notification in unread_notifications:
+                if NotificationService.mark_notification_read(notification.id):
+                    marked_count += 1
+            
+            return JsonResponse({
+                'success': True,
+                'marked_count': marked_count,
+                'message': f'Marked {marked_count} notification(s) as read'
+            })
+                
+        except Exception as e:
+            logger.error(f"Error marking all notifications as read for user {user_id}: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid method'}, status=405)
+
+

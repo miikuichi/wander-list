@@ -4,8 +4,11 @@ from django.views.decorators.http import require_http_methods
 from django.utils.dateparse import parse_datetime
 
 from supabase_service import get_service_client
+from login.decorators import require_authentication, require_owner
+from audit_logs.services import log_create, log_update, log_delete
 
 
+@require_authentication
 @require_http_methods(["GET", "POST"])
 def reminders_page(request):
     """Reminders and Notifications page with create + list.

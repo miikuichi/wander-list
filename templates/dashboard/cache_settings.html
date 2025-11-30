@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cache Settings - PisoHeroes{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, #34c54a 0%, #28a745 100%); color: white; border: none;">
+                <div class="card-body py-4">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-database fa-3x"></i>
+                        </div>
+                        <div>
+                            <h2 class="mb-1">Cache Management</h2>
+                            <p class="mb-0 opacity-75">Manage your local storage and offline data</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cache Information -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-info-circle text-primary"></i> Cache Information
+                            </h5>
+                            
+                            <div class="cache-info-item">
+                                <span class="cache-info-label">
+                                    <i class="fas fa-hdd"></i> Cache Size
+                                </span>
+                                <span class="cache-info-value" id="cacheSize">
+                                    <i class="fas fa-spinner fa-spin"></i> Calculating...
+                                </span>
+                            </div>
+                            
+                            <div class="cache-info-item">
+                                <span class="cache-info-label">
+                                    <i class="fas fa-clock"></i> Last Sync
+                                </span>
+                                <span class="cache-info-value" id="lastSync">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                                </span>
+                            </div>
+                            
+                            <div class="cache-info-item">
+                                <span class="cache-info-label">
+                                    <i class="fas fa-code-branch"></i> Cache Version
+                                </span>
+                                <span class="cache-info-value" id="cacheVersion">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                                </span>
+                            </div>
+                            
+                            <div class="cache-info-item">
+                                <span class="cache-info-label">
+                                    <i class="fas fa-wifi"></i> Connection Status
+                                </span>
+                                <span class="cache-info-value" id="connectionStatus">
+                                    <i class="fas fa-spinner fa-spin"></i> Checking...
+                                </span>
+                            </div>
+                            
+                            <div class="cache-info-item">
+                                <span class="cache-info-label">
+                                    <i class="fas fa-list"></i> Pending Operations
+                                </span>
+                                <span class="cache-info-value" id="pendingOps">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading...
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">
+                                <i class="fas fa-cogs text-success"></i> Cache Actions
+                            </h5>
+                            
+                            <div class="d-grid gap-3">
+                                <button class="btn btn-outline-primary btn-lg" id="syncBtn">
+                                    <i class="fas fa-sync-alt"></i> Sync Now
+                                </button>
+                                
+                                <button class="btn btn-outline-secondary btn-lg" id="refreshCacheInfo">
+                                    <i class="fas fa-redo"></i> Refresh Information
+                                </button>
+                                
+                                <button class="btn btn-outline-warning btn-lg" id="clearExpensesCache">
+                                    <i class="fas fa-receipt"></i> Clear Expenses Cache
+                                </button>
+                                
+                                <button class="btn btn-outline-danger btn-lg" id="clearCacheBtn">
+                                    <i class="fas fa-trash-alt"></i> Clear All Cache
+                                </button>
+                            </div>
+                            
+                            <div class="alert alert-info mt-4 mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> Clearing cache will remove offline data but won't affect your server data. You can always re-sync to restore it.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cached Data Overview -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-layer-group"></i> Cached Data Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Data Type</th>
+                                    <th>Status</th>
+                                    <th>Last Updated</th>
+                                    <th>Size</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cachedDataTable">
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading cache data...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Favorites Management -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star"></i> Quick-Add Favorites
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="favoritesList">
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin"></i> Loading favorites...
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Tip:</strong> Your most frequently added expense categories and amounts are saved as favorites for quick access.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadCacheInfo();
+    
+    // Refresh button
+    document.getElementById('refreshCacheInfo').addEventListener('click', loadCacheInfo);
+    
+    // Clear expenses cache
+    document.getElementById('clearExpensesCache').addEventListener('click', function() {
+        if (confirm('Clear expenses cache? This will remove cached expense data.')) {
+            CacheManager.invalidateExpenses();
+            loadCacheInfo();
+            showAlert('Expenses cache cleared successfully', 'success');
+        }
+    });
+});
+
+function loadCacheInfo() {
+    // Cache size
+    document.getElementById('cacheSize').textContent = CacheManager.formatCacheSize();
+    
+    // Last sync
+    document.getElementById('lastSync').textContent = CacheManager.getLastSync();
+    
+    // Cache version
+    document.getElementById('cacheVersion').textContent = CacheManager.version;
+    
+    // Connection status
+    const online = navigator.onLine;
+    const statusElement = document.getElementById('connectionStatus');
+    statusElement.innerHTML = online 
+        ? '<span class="badge bg-success"><i class="fas fa-check"></i> Online</span>'
+        : '<span class="badge bg-danger"><i class="fas fa-times"></i> Offline</span>';
+    
+    // Pending operations
+    const pending = CacheManager.getPendingOperations();
+    document.getElementById('pendingOps').innerHTML = pending.length > 0
+        ? `<span class="badge bg-warning">${pending.length} pending</span>`
+        : '<span class="badge bg-success">0</span>';
+    
+    // Load cached data table
+    loadCachedDataTable();
+    
+    // Load favorites
+    loadFavorites();
+}
+
+function loadCachedDataTable() {
+    const keys = CacheManager.keys;
+    const rows = [];
+    
+    const dataTypes = [
+        { key: keys.expenses, name: 'Expenses', icon: 'fa-receipt' },
+        { key: keys.darkMode, name: 'Dark Mode Preference', icon: 'fa-moon' },
+        { key: keys.lastCategory, name: 'Last Category', icon: 'fa-tag' },
+        { key: keys.favorites, name: 'Favorites', icon: 'fa-star' },
+        { key: keys.pendingOps, name: 'Pending Operations', icon: 'fa-clock' }
+    ];
+    
+    dataTypes.forEach(dataType => {
+        const data = CacheManager.get(dataType.key);
+        const rawData = localStorage.getItem(dataType.key);
+        const size = rawData ? (rawData.length / 1024).toFixed(2) + ' KB' : '0 KB';
+        const status = data ? 'Cached' : 'Empty';
+        const statusBadge = data 
+            ? '<span class="badge bg-success">Cached</span>'
+            : '<span class="badge bg-secondary">Empty</span>';
+        
+        let lastUpdated = 'N/A';
+        if (rawData) {
+            try {
+                const parsed = JSON.parse(rawData);
+                if (parsed.timestamp) {
+                    lastUpdated = new Date(parsed.timestamp).toLocaleString();
+                }
+            } catch (e) {
+                // Ignore
+            }
+        }
+        
+        rows.push(`
+            <tr>
+                <td><i class="fas ${dataType.icon} me-2"></i>${dataType.name}</td>
+                <td>${statusBadge}</td>
+                <td>${lastUpdated}</td>
+                <td>${size}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearSpecificCache('${dataType.key}')">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+    
+    document.getElementById('cachedDataTable').innerHTML = rows.join('');
+}
+
+function loadFavorites() {
+    const favorites = CacheManager.getFavorites();
+    const container = document.getElementById('favoritesList');
+    
+    if (favorites.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center mb-0">No favorites yet. Add expenses to build your favorites list!</p>';
+        return;
+    }
+    
+    let html = '<div class="row">';
+    favorites.forEach((fav, index) => {
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${fav.category}</h6>
+                                <p class="mb-0 text-success fw-bold">₱${parseFloat(fav.amount).toFixed(2)}</p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeFavorite(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function clearSpecificCache(key) {
+    if (confirm('Clear this cached data?')) {
+        CacheManager.invalidate(key);
+        loadCacheInfo();
+        showAlert('Cache cleared successfully', 'success');
+    }
+}
+
+function removeFavorite(index) {
+    if (confirm('Remove this favorite?')) {
+        CacheManager.removeFavorite(index);
+        loadFavorites();
+        showAlert('Favorite removed', 'success');
+    }
+}
+
+function showAlert(message, type) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = alertHtml;
+    container.insertBefore(tempDiv.firstElementChild, container.firstElementChild);
+    
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) alert.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

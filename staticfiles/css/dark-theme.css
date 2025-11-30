@@ -1,0 +1,297 @@
+/**
+ * PisoHeroes Dark Theme
+ * Dark mode styles for better viewing in low-light conditions
+ */
+
+:root {
+    /* Light theme colors (default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
+    --card-bg: #ffffff;
+    --card-shadow: rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --input-border: #ced4da;
+    --navbar-bg: #ffffff;
+    --navbar-text: #212529;
+}
+
+/* Dark theme overrides */
+body.dark-theme {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #e9ecef;
+    --text-secondary: #adb5bd;
+    --border-color: #495057;
+    --card-bg: #2d2d2d;
+    --card-shadow: rgba(0, 0, 0, 0.3);
+    --input-bg: #3d3d3d;
+    --input-border: #495057;
+    --navbar-bg: #212529;
+    --navbar-text: #e9ecef;
+    
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Apply theme variables */
+body.dark-theme .navbar {
+    background-color: var(--navbar-bg) !important;
+    border-bottom: 1px solid var(--border-color);
+}
+
+body.dark-theme .navbar-brand,
+body.dark-theme .nav-link {
+    color: var(--navbar-text) !important;
+}
+
+body.dark-theme .card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 8px var(--card-shadow);
+}
+
+body.dark-theme .card-header,
+body.dark-theme .card-footer {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-primary);
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus {
+    background-color: var(--input-bg);
+    border-color: #34c54a;
+    color: var(--text-primary);
+}
+
+body.dark-theme .form-control::placeholder {
+    color: var(--text-secondary);
+}
+
+body.dark-theme .table {
+    color: var(--text-primary);
+}
+
+body.dark-theme .table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--bg-secondary);
+}
+
+body.dark-theme .table-hover tbody tr:hover {
+    background-color: var(--bg-tertiary);
+}
+
+body.dark-theme .list-group-item {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+body.dark-theme .list-group-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+body.dark-theme .modal-content {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .modal-header,
+body.dark-theme .modal-footer {
+    border-color: var(--border-color);
+}
+
+body.dark-theme .dropdown-menu {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .dropdown-item {
+    color: var(--text-primary);
+}
+
+body.dark-theme .dropdown-item:hover,
+body.dark-theme .dropdown-item:focus {
+    background-color: var(--bg-secondary);
+}
+
+body.dark-theme .alert {
+    border-color: var(--border-color);
+}
+
+body.dark-theme .alert-info {
+    background-color: #1a4d66;
+    color: #b3d9ff;
+}
+
+body.dark-theme .alert-warning {
+    background-color: #664d1a;
+    color: #ffd9b3;
+}
+
+body.dark-theme .alert-danger {
+    background-color: #661a1a;
+    color: #ffb3b3;
+}
+
+body.dark-theme .alert-success {
+    background-color: #1a661a;
+    color: #b3ffb3;
+}
+
+body.dark-theme .breadcrumb {
+    background-color: var(--bg-secondary);
+}
+
+body.dark-theme .breadcrumb-item.active {
+    color: var(--text-secondary);
+}
+
+body.dark-theme .page-item.disabled .page-link {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .page-link {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+body.dark-theme .page-link:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+/* Chart.js dark theme adjustments */
+body.dark-theme canvas {
+    filter: brightness(0.9);
+}
+
+/* Keep buttons with their brand colors */
+body.dark-theme .btn-primary {
+    background-color: #34c54a;
+    border-color: #34c54a;
+    color: #ffffff;
+}
+
+body.dark-theme .btn-outline-primary {
+    color: #34c54a;
+    border-color: #34c54a;
+}
+
+body.dark-theme .btn-outline-primary:hover {
+    background-color: #34c54a;
+    border-color: #34c54a;
+    color: #ffffff;
+}
+
+/* Dark mode toggle switch styles */
+.dark-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dark-mode-toggle input[type="checkbox"] {
+    width: 50px;
+    height: 26px;
+    appearance: none;
+    background-color: #ccc;
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.dark-mode-toggle input[type="checkbox"]:checked {
+    background-color: #34c54a;
+}
+
+.dark-mode-toggle input[type="checkbox"]::before {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.dark-mode-toggle input[type="checkbox"]:checked::before {
+    transform: translateX(24px);
+}
+
+.dark-mode-toggle label {
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Offline indicator */
+#offlineIndicator {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+body.dark-theme #offlineIndicator {
+    background: linear-gradient(135deg, #ff4d4d 0%, #dc3545 100%);
+}
+
+/* Cache info styles */
+.cache-info-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.cache-info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cache-info-item:last-child {
+    border-bottom: none;
+}
+
+.cache-info-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.cache-info-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Smooth transitions */
+body,
+.card,
+.form-control,
+.form-select,
+.btn,
+.navbar,
+.modal-content,
+.dropdown-menu {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

@@ -78,6 +78,35 @@ class BudgetAlertForm(forms.Form):
         })
     )
     
+    # Multi-threshold checkboxes
+    threshold_50 = forms.BooleanField(
+        label="50% (Info)",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    threshold_75 = forms.BooleanField(
+        label="75% (Warning)",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    threshold_90 = forms.BooleanField(
+        label="90% (Danger)",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    threshold_100 = forms.BooleanField(
+        label="100% (Critical)",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
     notify_dashboard = forms.BooleanField(
         label="Notification Bell",
         required=False,
@@ -120,6 +149,10 @@ class BudgetAlertForm(forms.Form):
         if self.instance:
             self.fields['amount_limit'].initial = self.instance.amount_limit
             self.fields['threshold_percent'].initial = self.instance.threshold_percent
+            self.fields['threshold_50'].initial = self.instance.threshold_50
+            self.fields['threshold_75'].initial = self.instance.threshold_75
+            self.fields['threshold_90'].initial = self.instance.threshold_90
+            self.fields['threshold_100'].initial = self.instance.threshold_100
             self.fields['notify_dashboard'].initial = self.instance.notify_dashboard
             self.fields['notify_email'].initial = self.instance.notify_email
             self.fields['notify_push'].initial = self.instance.notify_push
