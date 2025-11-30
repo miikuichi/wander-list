@@ -36,9 +36,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-0n-y*q!%qlk=#d+2_uw21zmj#m_wlxxxbx25wmzen+vc$@3muq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'pisoheroes.onrender.com']
 
 
 # Application definition
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -204,3 +205,11 @@ else:
 # Firebase Cloud Messaging (Push Notifications)
 # Get your FCM server key from Firebase Console
 FCM_SERVER_KEY = os.getenv('FCM_SERVER_KEY', '')
+
+
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestFilesStorage'
+
+
+# Security Setting: Log out user when browser closes
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

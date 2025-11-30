@@ -3,43 +3,58 @@
         <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDBDMTguNiAwIDI0IDUuNCAyNCAxMkMyNCAxOC42IDE4LjYgMjQgMTIgMjRDNS40IDI0IDAgMTguNiAwIDEyQzAgNS40IDUuNCAwIDEyIDBaTTEyIDYuMkM5LjcgNi4yIDcuOCA4LjEgNy44IDEwLjRDMTAuMSAxMC40IDEyIDEyLjMgMTIgMTQuNEMxMiAxMi4z IDEzLjkgMTAuNCAxNi4yIDEwLjRDMTMuOSAxMC40IDEyIDguNSAxMiA2LjJaIiBmaWxsPSIjNENVOTY2Ii8+Cjwvc3ZnPg==" alt="PisoHeroes Logo" class="logo-icon">
         <span class="app-name">PisoHeroes</span>
     </div>
+
     <nav class="nav flex-column mt-4">
         
-        {% url 'budget_alerts:alerts_page' as budget_alerts_url %}
-        {% url 'dashboard' as dashboard_url %}
-        {% url 'expenses' as expenses_url %}
-        {% url 'savings_goals:goals' as savings_goals_url %}
-        {% url 'reminders:home' as reminders_url %}
-        {% url 'analytics:dashboard' as analytics_url %}
+        {% if request.session.is_admin %}
+            
+            <a class="nav-link {% if '/admin-panel/' in request.path %}active{% endif %}" href="{% url 'admin_dashboard' %}">
+                <i class="fas fa-shield-alt"></i> Admin Panel
+            </a>
+            
+            <a class="nav-link disabled text-muted" href="#">
+                <i class="fas fa-users-cog"></i> User Management
+            </a>
 
-        <a class="nav-link {% if request.path|urlencode == dashboard_url|urlencode%}active{% endif %}" href="{{ dashboard_url }}"><i class="fas fa-home"></i> Home</a>
-        
-        <a class="nav-link {% if request.path|urlencode == expenses_url|urlencode%}active{% endif %}" href="{{ expenses_url }}"><i class="fas fa-money-bill-wave"></i> Expenses</a>
-        
-        <a class="nav-link {% if request.path|urlencode == budget_alerts_url|urlencode %}active{% endif %}" 
-           href="{{ budget_alerts_url }}">
-            <i class="fas fa-bell"></i> Budget Alerts
-        </a>
-        
-        <a class="nav-link {% if request.path|urlencode == savings_goals_url|urlencode %}active{% endif %}" 
-           href="{{ savings_goals_url }}">
-            <i class="fas fa-piggy-bank"></i> Savings Goals
-        </a>
-        
-        <a class="nav-link {% if request.path|urlencode == reminders_url|urlencode %}active{% endif %}" href="{{ reminders_url }}">
-            <i class="fas fa-bell"></i> Reminders
-        </a>
-        
-        <a class="nav-link {% if request.path|urlencode == analytics_url|urlencode %}active{% endif %}" href="{{ analytics_url }}">
-            <i class="fas fa-chart-bar"></i> Visual Reports
-        </a>
-        
-        {% url 'cache_settings' as cache_settings_url %}
-        <a class="nav-link {% if request.path|urlencode == cache_settings_url|urlencode %}active{% endif %}" href="{{ cache_settings_url }}">
-            <i class="fas fa-database"></i> Cache Settings
-        </a>
-        
-        <a class="nav-link" href="#"><i class="fas fa-sync-alt"></i> Data Backup & Sync</a>
+        {% else %}
+            
+            {% url 'budget_alerts:alerts_page' as budget_alerts_url %}
+            {% url 'dashboard' as dashboard_url %}
+            {% url 'expenses' as expenses_url %}
+            {% url 'savings_goals:goals' as savings_goals_url %}
+            {% url 'reminders:home' as reminders_url %}
+            {% url 'analytics:dashboard' as analytics_url %}
+
+            <a class="nav-link {% if request.path|urlencode == dashboard_url|urlencode%}active{% endif %}" href="{{ dashboard_url }}"><i class="fas fa-home"></i> Home</a>
+            
+            <a class="nav-link {% if request.path|urlencode == expenses_url|urlencode%}active{% endif %}" href="{{ expenses_url }}"><i class="fas fa-money-bill-wave"></i> Expenses</a>
+            
+            <a class="nav-link {% if request.path|urlencode == budget_alerts_url|urlencode %}active{% endif %}" 
+               href="{{ budget_alerts_url }}">
+                <i class="fas fa-bell"></i> Budget Alerts
+            </a>
+            
+            <a class="nav-link {% if request.path|urlencode == savings_goals_url|urlencode %}active{% endif %}" 
+               href="{{ savings_goals_url }}">
+                <i class="fas fa-piggy-bank"></i> Savings Goals
+            </a>
+            
+            <a class="nav-link {% if request.path|urlencode == reminders_url|urlencode %}active{% endif %}" href="{{ reminders_url }}">
+                <i class="fas fa-clock"></i> Reminders
+            </a>
+            
+            <a class="nav-link {% if request.path|urlencode == analytics_url|urlencode %}active{% endif %}" href="{{ analytics_url }}">
+                <i class="fas fa-chart-bar"></i> Visual Reports
+            </a>
+            
+            {% url 'cache_settings' as cache_settings_url %}
+            <a class="nav-link {% if request.path|urlencode == cache_settings_url|urlencode %}active{% endif %}" href="{{ cache_settings_url }}">
+                <i class="fas fa-database"></i> Cache Settings
+            </a>
+            
+            <a class="nav-link" href="#"><i class="fas fa-sync-alt"></i> Data Backup & Sync</a>
+
+        {% endif %}
         
     </nav>
 </div>
