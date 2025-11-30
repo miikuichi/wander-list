@@ -307,7 +307,6 @@ def google_login(request):
         # Get the redirect URL (where Google will send user back)
         redirect_url = request.build_absolute_uri('/login/bridge/')
 
-        
         # This generates the OAuth URL but doesn't redirect
         # We'll use JavaScript to handle the actual redirect
         oauth_url = f"https://{supabase.supabase_url.replace('https://', '')}/auth/v1/authorize?provider=google&redirect_to={redirect_url}"
@@ -413,9 +412,32 @@ def oauth_callback(request):
                     remote_user_id = user.id 
                     
             except Exception as insert_error:
-                logger.error(f"Failed to create OAuth user in Supabase: {insert_error}")
-                # Emergency fallback: Use local ID (might cause mismatch, but allows login)
-                remote_user_id = user.id
+                error_str = str(insert_error)
+                
+                # Check for the specific database conflict error (PostgreSQL code 23505)
+                # or a Supabase error message indicating duplicate key.
+                if '23505' in error_str or 'duplicate key value violates unique constraint' in error_str:
+                    logger.warning(f"OAuth user {email} already exists. Skipping insert due to conflict.")
+                    # Treat conflict as success and continue the login flow
+                    # We must re-run the GET to fetch the correct remote_user_id now!
+                    try:
+                        db_user_response = supabase.table('login_user')\
+                            .select('*')\
+                            .eq('email', email)\
+                            .single()\
+                            .execute()
+                        if db_user_response.data:
+                             remote_user_id = db_user_response.data[0]['id']
+                        else:
+                             # Worst-case fallback
+                             remote_user_id = user.id
+                    except:
+                        remote_user_id = user.id
+
+                else:
+                    # If it's a different, unexpected error, raise it
+                    logger.error(f"Failed to create OAuth user in Supabase (Unexpected): {insert_error}")
+                    remote_user_id = user.id # Emergency fallback
 
         # ---------------------------------------------------------
         # SESSION SETUP (Use Remote ID)
