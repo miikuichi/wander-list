@@ -148,13 +148,35 @@ def login_view(request):
                 print("DEBUG: Step 1 - Calling Supabase sign_in...")
                 signin_response = sign_in(email, password)
                 
+                # 2. Get Supabase Client
+                supabase = get_service_client()
+                
                 # Debugging: Print the raw response type to understand what we got back
                 print(f"DEBUG: Supabase response type: {type(signin_response)}")
                 
+                db_user_response = supabase.table('login_user')\
+                    .select('*')\
+                    .eq('email', email)\
+                    .single()\
+                    .execute()
+                if not db_user_response.data:
+                    raise ValueError("User logged in but not found in Supabase 'login_user' table.")
                 # Extract access_token and user_data safely
                 access_token = None
                 user_data = None
-                
+
+                remote_user = db_user_response.data
+                remote_user_id = remote_user['id']  # This is the correct ID (e.g., 6 for gwapo)
+                is_admin = remote_user.get('is_admin', False)
+                # 4. Sync Local SQLite User (Just for Admin Dashboard display)
+                user, created = User.objects.update_or_create(
+                    email=email,
+                    defaults={
+                        'username': remote_user.get('username', email.split('@')[0]),
+                        'is_admin': is_admin,
+                        # We don't rely on the local ID anymore, so we just ensure the record exists
+                    }
+                )
                 # Handle different Supabase client response structures
                 if hasattr(signin_response, 'user'):
                     user_data = signin_response.user
@@ -228,10 +250,10 @@ def login_view(request):
                 # ---------------------------------------------------------
                 # STEP 4: Session Setup
                 # ---------------------------------------------------------
-                request.session['user_id'] = user.id
+                request.session['user_id'] = remote_user_id
                 request.session['username'] = user.username
                 request.session['email'] = email
-                request.session['is_admin'] = user.is_admin
+                request.session['is_admin'] = is_admin
                 
                 if access_token:
                     request.session['supabase_access_token'] = access_token
@@ -304,23 +326,19 @@ def google_login(request):
 
 @csrf_exempt
 def oauth_callback(request):
-    """Handle OAuth callback from Google/Supabase."""
+    """Handle OAuth callback from Google/Supabase with correct ID syncing."""
     try:
-        # Extract access_token from URL fragment or query params
-        # Supabase sends tokens in URL fragment (after #)
-        # These need to be parsed by JavaScript and sent to this endpoint
-        
+        # Extract access_token
         access_token = request.GET.get('access_token') or request.POST.get('access_token')
-        refresh_token = request.GET.get('refresh_token') or request.POST.get('refresh_token')
         
         if not access_token:
             messages.error(request, "⚠️ OAuth authentication failed. No access token received.")
             return redirect('login:login_page')
         
-        # Get user info from Supabase using the access token
+        # 1. Get Supabase Client
         supabase = get_service_client()
         
-        # Use the access token to get user details
+        # 2. Verify Token & Get User Email
         response = supabase.auth.get_user(access_token)
         
         if not response or not hasattr(response, 'user'):
@@ -330,46 +348,92 @@ def oauth_callback(request):
         user_data = response.user
         email = user_data.email
         
-        # Extract name from user metadata
+        # Extract metadata
         user_metadata = user_data.user_metadata or {}
-        full_name = user_metadata.get('full_name', '')
         username = user_metadata.get('name', email.split('@')[0])
         
-        # Store user in local SQLite
-        user, created = User.objects.get_or_create(
+        # ---------------------------------------------------------
+        # CRITICAL FIX: Fetch REAL ID from Supabase 'login_user'
+        # ---------------------------------------------------------
+        remote_user_id = None
+        is_admin = False
+        
+        try:
+            # Try to find the user in Supabase public table
+            db_user_response = supabase.table('login_user')\
+                .select('*')\
+                .eq('email', email)\
+                .single()\
+                .execute()
+            
+            if db_user_response.data:
+                # User exists! Grab their REAL ID
+                remote_user = db_user_response.data
+                remote_user_id = remote_user['id']
+                is_admin = remote_user.get('is_admin', False)
+                logger.info(f"Found existing OAuth user in Supabase: {email} (ID: {remote_user_id})")
+            
+        except Exception as e:
+            logger.warning(f"User {email} not found in login_user table yet: {e}")
+
+        # ---------------------------------------------------------
+        # Sync Local User (Update or Create)
+        # ---------------------------------------------------------
+        user, created = User.objects.update_or_create(
             email=email,
             defaults={
                 'username': username,
-                'password': 'oauth_google'  # Placeholder for OAuth users
+                'password': 'oauth_google',
+                'is_admin': is_admin
             }
         )
-        
-        if not created and user.password != 'oauth_google':
-            # Update existing user to indicate OAuth login
-            user.username = username
-            user.save()
-        
-        # Store in Supabase PostgreSQL
-        try:
-            supabase.table('login_user').upsert({
-                'id': user.id,
-                'username': username,
-                'email': email,
-                'password': 'oauth_google'
-            }).execute()
-            logger.info(f"OAuth user {email} saved to Supabase")
-        except Exception as db_error:
-            logger.error(f"Failed to save OAuth user to Supabase: {db_error}")
-        
-        # Create session
-        request.session['user_id'] = user.id
+
+        # ---------------------------------------------------------
+        # Handle New Users (If not in Supabase yet)
+        # ---------------------------------------------------------
+        if not remote_user_id:
+            # This is a NEW user (or sync issue). We must insert them into Supabase.
+            # We try to let Supabase handle the ID, or use local if necessary.
+            try:
+                # Insert and return the created record to get the ID
+                new_user_data = {
+                    'username': username,
+                    'email': email,
+                    'password': 'oauth_google',
+                    'is_admin': False
+                }
+                # Insert and select back the ID
+                insert_response = supabase.table('login_user').insert(new_user_data).select().execute()
+                
+                if insert_response.data:
+                    remote_user_id = insert_response.data[0]['id']
+                    logger.info(f"Created new OAuth user in Supabase: {email} (ID: {remote_user_id})")
+                else:
+                    # Fallback (rare): Use local ID if insert didn't return data
+                    remote_user_id = user.id 
+                    
+            except Exception as insert_error:
+                logger.error(f"Failed to create OAuth user in Supabase: {insert_error}")
+                # Emergency fallback: Use local ID (might cause mismatch, but allows login)
+                remote_user_id = user.id
+
+        # ---------------------------------------------------------
+        # SESSION SETUP (Use Remote ID)
+        # ---------------------------------------------------------
+        request.session['user_id'] = remote_user_id  # <--- THE FIX
         request.session['username'] = username
         request.session['email'] = email
+        request.session['is_admin'] = is_admin
         request.session['supabase_access_token'] = access_token
         request.session['auth_method'] = 'google_oauth'
         
-        messages.success(request, f"✅ Welcome, {username}! Signed in with Google.")
-        return redirect('dashboard')
+        # Redirect Logic
+        if is_admin:
+            messages.success(request, f"✅ Welcome Admin, {username}!")
+            return redirect('admin_dashboard')
+        else:
+            messages.success(request, f"✅ Welcome, {username}!")
+            return redirect('dashboard')
         
     except Exception as e:
         logger.error(f"OAuth callback failed: {e}", exc_info=True)
