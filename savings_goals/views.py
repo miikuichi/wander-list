@@ -5,12 +5,15 @@ from django.db.models import Sum
 from .models import SavingsGoal, SavingsTransaction
 from .forms import SavingsGoalForm, AddSavingsForm
 from decimal import Decimal
+from login.decorators import require_authentication, require_owner
+from audit_logs.services import log_create, log_update, log_delete
 import logging
 from supabase_service import get_service_client
 
 logger = logging.getLogger(__name__)
 
 
+@require_authentication
 def savings_goals_view(request):
     """
     Display savings goals page with all CRUD functionality.
@@ -147,6 +150,7 @@ def savings_goals_view(request):
         return redirect('dashboard')
 
 
+@require_owner(resource_type='goal', id_param='goal_id')
 def edit_goal_view(request, goal_id):
     """
     Edit an existing savings goal.
@@ -194,6 +198,7 @@ def edit_goal_view(request, goal_id):
         return redirect('savings_goals:goals')
 
 
+@require_owner(resource_type='goal', id_param='goal_id')
 def delete_goal_view(request, goal_id):
     """
     Delete a savings goal (Supabase).
@@ -241,9 +246,10 @@ def delete_goal_view(request, goal_id):
         logger.error(f"Error deleting goal {goal_id} for user {user_id}: {e}", exc_info=True)
         messages.error(request, f"⚠️ Failed to delete savings goal: {str(e)}")
     
-    return redirect('savings_goals:goals')
+        return redirect('savings_goals:goals')
 
 
+@require_owner(resource_type='goal', id_param='goal_id')
 def add_savings_view(request, goal_id):
     """
     Add savings to a goal (Supabase).
@@ -421,6 +427,7 @@ def add_savings_view(request, goal_id):
     return redirect('savings_goals:goals')
 
 
+@require_owner(resource_type='goal', id_param='goal_id')
 def achieve_goal_view(request, goal_id):
     """
     Mark a goal as achieved/completed.
@@ -459,6 +466,7 @@ def achieve_goal_view(request, goal_id):
     return redirect('savings_goals:goals')
 
 
+@require_owner(resource_type='goal', id_param='goal_id')
 def reset_goal_view(request, goal_id):
     """
     Reset a goal's progress to zero.

@@ -1,0 +1,534 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}PisoHeroes | Visual Reports{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Hero Header -->
+    <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, #34c54a 0%, #28a745 100%); color: white; border: none;">
+        <div class="card-body py-4">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-chart-line fa-3x"></i>
+                </div>
+                <div>
+                    <h1 class="mb-1" style="font-size: 2rem; font-weight: 700;">Visual Analytics Dashboard</h1>
+                    <p class="mb-0 opacity-75">Track your spending patterns and financial insights</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range Filter -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex gap-3 align-items-center flex-wrap">
+                        <div>
+                            <label class="form-label mb-1 small"><i class="fas fa-calendar-alt"></i> Start Date</label>
+                            <input type="date" id="start-date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+                        </div>
+                        <div>
+                            <label class="form-label mb-1 small"><i class="fas fa-calendar-alt"></i> End Date</label>
+                            <input type="date" id="end-date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="align-self-end">
+                            <button onclick="updateCharts()" class="btn btn-success">
+                                <i class="fas fa-sync-alt"></i> Update
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mt-3 mt-md-0">
+                    <div class="d-flex gap-2 justify-content-md-end">
+                        <button onclick="setQuickRange('week')" class="btn btn-sm btn-outline-secondary">This Week</button>
+                        <button onclick="setQuickRange('month')" class="btn btn-sm btn-outline-secondary">This Month</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="text-muted mb-0">Total Spent</h6>
+                        <i class="fas fa-wallet fa-2x text-success"></i>
+                    </div>
+                    <h2 class="mb-0">₱{{ total_spent|floatformat:2 }}</h2>
+                    <small class="text-muted">in selected period</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="text-muted mb-0">Transactions</h6>
+                        <i class="fas fa-receipt fa-2x text-primary"></i>
+                    </div>
+                    <h2 class="mb-0">{{ expense_count }}</h2>
+                    <small class="text-muted">total expenses</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="text-muted mb-0">Daily Average</h6>
+                        <i class="fas fa-calendar-day fa-2x text-warning"></i>
+                    </div>
+                    <h2 class="mb-0">₱{{ avg_daily|floatformat:2 }}</h2>
+                    <small class="text-muted">per day</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="text-muted mb-0">Budget Health</h6>
+                        <i class="fas fa-heartbeat fa-2x text-danger"></i>
+                    </div>
+                    <h2 class="mb-0">{{ budget_adherence|floatformat:0 }}%</h2>
+                    <small class="text-muted">on track</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row mb-4">
+        <!-- Daily Spending Chart -->
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-area text-success"></i> Daily Spending Trend</h5>
+                    <div id="daily-loading" class="text-center py-5">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading daily data...</p>
+                    </div>
+                    <div id="daily-empty" class="text-center py-5" style="display:none;">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No expense data available for the selected period</p>
+                    </div>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="dailyChart" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row mb-4">
+        <!-- Category Breakdown -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-pie text-primary"></i> Category Breakdown</h5>
+                    <div id="category-loading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading categories...</p>
+                    </div>
+                    <div id="category-empty" class="text-center py-5" style="display:none;">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No category data available</p>
+                    </div>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="categoryChart" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Comparison -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-bar text-info"></i> Weekly Comparison</h5>
+                    <div id="weekly-loading" class="text-center py-5">
+                        <div class="spinner-border text-info" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading weekly data...</p>
+                    </div>
+                    <div id="weekly-empty" class="text-center py-5" style="display:none;">
+                        <i class="fas fa-calendar-week fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No weekly data available</p>
+                    </div>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="weeklyChart" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 3 -->
+    <div class="row">
+        <!-- Monthly Trends -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-line text-warning"></i> Monthly Trends</h5>
+                    <div id="monthly-loading" class="text-center py-5">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading monthly data...</p>
+                    </div>
+                    <div id="monthly-empty" class="text-center py-5" style="display:none;">
+                        <i class="fas fa-calendar fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No monthly data available</p>
+                    </div>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="monthlyChart" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hourly Patterns -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-clock text-danger"></i> Hourly Spending Patterns</h5>
+                    <div id="hourly-loading" class="text-center py-5">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading hourly patterns...</p>
+                    </div>
+                    <div id="hourly-empty" class="text-center py-5" style="display:none;">
+                        <i class="fas fa-business-time fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hourly data available</p>
+                    </div>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="hourlyChart" style="display:none;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Chart instances
+const charts = {
+    daily: null,
+    category: null,
+    weekly: null,
+    monthly: null,
+    hourly: null
+};
+
+// Colors
+const colors = {
+    primary: '#34c54a',
+    success: '#28a745',
+    info: '#17a2b8',
+    warning: '#ffc107',
+    danger: '#dc3545',
+    purple: '#9c27b0'
+};
+
+const chartColors = [colors.primary, colors.info, colors.warning, colors.danger, colors.purple, '#00bcd4', '#ff9800', '#e91e63'];
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateCharts();
+});
+
+function getDateRange() {
+    return {
+        start: document.getElementById('start-date').value,
+        end: document.getElementById('end-date').value
+    };
+}
+
+function setQuickRange(type) {
+    const today = new Date();
+    const startDate = new Date();
+    
+    if (type === 'week') {
+        const day = today.getDay();
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+        startDate.setDate(diff);
+    } else if (type === 'month') {
+        startDate.setDate(1);
+    }
+    
+    document.getElementById('start-date').value = startDate.toISOString().split('T')[0];
+    document.getElementById('end-date').value = today.toISOString().split('T')[0];
+    
+    updateCharts();
+}
+
+async function updateCharts() {
+    const dateRange = getDateRange();
+    console.log('Loading charts...', dateRange);
+    
+    const startTime = performance.now();
+    
+    await Promise.all([
+        loadDailySpending(dateRange),
+        loadCategoryBreakdown(dateRange),
+        loadWeeklyComparison(dateRange),
+        loadMonthlyTrends(),
+        loadHourlyPatterns(dateRange)
+    ]);
+    
+    const endTime = performance.now();
+    console.log(`All charts loaded in ${(endTime - startTime).toFixed(2)}ms`);
+}
+
+async function loadDailySpending(dateRange) {
+    try {
+        const response = await fetch(`/analytics/api/daily-spending/?start_date=${dateRange.start}&end_date=${dateRange.end}`);
+        const data = await response.json();
+        
+        document.getElementById('daily-loading').style.display = 'none';
+        
+        if (!data.data || data.data.length === 0) {
+            document.getElementById('daily-empty').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('dailyChart').style.display = 'block';
+        
+        if (charts.daily) charts.daily.destroy();
+        
+        const ctx = document.getElementById('dailyChart').getContext('2d');
+        charts.daily = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.data.map(d => d.label),
+                datasets: [{
+                    label: 'Daily Spending',
+                    data: data.data.map(d => d.amount),
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primary + '30',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => '₱' + value.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading daily spending:', error);
+        document.getElementById('daily-loading').innerHTML = '<p class="text-danger">Failed to load data</p>';
+    }
+}
+
+async function loadCategoryBreakdown(dateRange) {
+    try {
+        const response = await fetch(`/analytics/api/category-breakdown/?start_date=${dateRange.start}&end_date=${dateRange.end}`);
+        const data = await response.json();
+        
+        document.getElementById('category-loading').style.display = 'none';
+        
+        if (!data.data || data.data.length === 0) {
+            document.getElementById('category-empty').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('categoryChart').style.display = 'block';
+        
+        if (charts.category) charts.category.destroy();
+        
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        charts.category = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.data.map(d => d.category),
+                datasets: [{
+                    data: data.data.map(d => d.amount),
+                    backgroundColor: chartColors
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading category breakdown:', error);
+        document.getElementById('category-loading').innerHTML = '<p class="text-danger">Failed to load data</p>';
+    }
+}
+
+async function loadWeeklyComparison(dateRange) {
+    try {
+        const response = await fetch(`/analytics/api/weekly-comparison/?start_date=${dateRange.start}&end_date=${dateRange.end}`);
+        const data = await response.json();
+        
+        document.getElementById('weekly-loading').style.display = 'none';
+        
+        if (!data.data || data.data.length === 0) {
+            document.getElementById('weekly-empty').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('weeklyChart').style.display = 'block';
+        
+        if (charts.weekly) charts.weekly.destroy();
+        
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        charts.weekly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.data.map(d => d.week_label),
+                datasets: [{
+                    label: 'Weekly Spending',
+                    data: data.data.map(d => d.amount),
+                    backgroundColor: colors.info
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => '₱' + value.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading weekly comparison:', error);
+        document.getElementById('weekly-loading').innerHTML = '<p class="text-danger">Failed to load data</p>';
+    }
+}
+
+async function loadMonthlyTrends() {
+    try {
+        const response = await fetch('/analytics/api/monthly-trends/');
+        const data = await response.json();
+        
+        document.getElementById('monthly-loading').style.display = 'none';
+        
+        if (!data.data || data.data.length === 0) {
+            document.getElementById('monthly-empty').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('monthlyChart').style.display = 'block';
+        
+        if (charts.monthly) charts.monthly.destroy();
+        
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        charts.monthly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.data.map(d => d.month),
+                datasets: [{
+                    label: 'Monthly Spending',
+                    data: data.data.map(d => d.amount),
+                    backgroundColor: colors.warning
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => '₱' + value.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading monthly trends:', error);
+        document.getElementById('monthly-loading').innerHTML = '<p class="text-danger">Failed to load data</p>';
+    }
+}
+
+async function loadHourlyPatterns(dateRange) {
+    try {
+        const response = await fetch(`/analytics/api/hourly-patterns/?start_date=${dateRange.start}&end_date=${dateRange.end}`);
+        const data = await response.json();
+        
+        document.getElementById('hourly-loading').style.display = 'none';
+        
+        if (!data.data || data.data.length === 0) {
+            document.getElementById('hourly-empty').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('hourlyChart').style.display = 'block';
+        
+        if (charts.hourly) charts.hourly.destroy();
+        
+        const ctx = document.getElementById('hourlyChart').getContext('2d');
+        charts.hourly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.data.map(d => d.time_label),
+                datasets: [{
+                    label: 'Transaction Count',
+                    data: data.data.map(d => d.count),
+                    backgroundColor: colors.danger
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading hourly patterns:', error);
+        document.getElementById('hourly-loading').innerHTML = '<p class="text-danger">Failed to load data</p>';
+    }
+}
+</script>
+{% endblock %}

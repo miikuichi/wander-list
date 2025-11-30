@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     'savings_goals.apps.SavingsGoalsConfig',
     'reminders.apps.RemindersConfig',  # Reminders app
     'notifications.apps.NotificationsConfig',  # Notification system
+    'analytics.apps.AnalyticsConfig',  # Visual Reports & Analytics
+    'audit_logs.apps.AuditLogsConfig',  # Audit Logging System
 ]
 
 MIDDLEWARE = [
@@ -76,12 +78,22 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
+        'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+            ],
+            'loaders': [
+                ('django.template.loaders.cached.Loader', [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                ]) if not DEBUG else 'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader' if not DEBUG else None,
+            ] if not DEBUG else [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
             ],
         },
     },

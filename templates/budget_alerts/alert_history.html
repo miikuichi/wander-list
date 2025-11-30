@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Alert History - PisoHeroes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-header {
+        background: linear-gradient(135deg, #34c54a 0%, #28a745 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(52, 197, 74, 0.2);
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    
+    .history-item {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    
+    .history-item:hover {
+        transform: translateX(4px);
+    }
+    
+    .history-item.info { border-left-color: #17a2b8; }
+    .history-item.warning { border-left-color: #ffc107; }
+    .history-item.danger { border-left-color: #fd7e14; }
+    .history-item.critical { border-left-color: #dc3545; }
+    
+    .severity-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="history-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-history"></i> Alert History</h1>
+                <p class="mb-0">View all triggered budget alerts and their status</p>
+            </div>
+            <div>
+                <a href="{% url 'budget_alerts:alerts_page' %}" class="btn btn-light">
+                    <i class="fas fa-bell"></i> Manage Alerts
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label text-muted">Total Alerts</div>
+                <div class="stat-value text-primary">{{ total_alerts }}</div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-card">
+                <div class="stat-label text-muted">Info (50%)</div>
+                <div class="stat-value" style="color: #17a2b8;">{{ severity_counts.info }}</div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-card">
+                <div class="stat-label text-muted">Warning (75%)</div>
+                <div class="stat-value" style="color: #ffc107;">{{ severity_counts.warning }}</div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="stat-card">
+                <div class="stat-label text-muted">Danger (90%)</div>
+                <div class="stat-value" style="color: #fd7e14;">{{ severity_counts.danger }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label text-muted">Critical (100%)</div>
+                <div class="stat-value" style="color: #dc3545;">{{ severity_counts.critical }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="filter-card">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label"><i class="fas fa-calendar"></i> Time Period</label>
+                <select name="days" class="form-select">
+                    <option value="7" {% if selected_days == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if selected_days == 30 %}selected{% endif %}>Last 30 days</option>
+                    <option value="90" {% if selected_days == 90 %}selected{% endif %}>Last 90 days</option>
+                    <option value="0" {% if selected_days == 0 %}selected{% endif %}>All time</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><i class="fas fa-tag"></i> Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><i class="fas fa-exclamation-triangle"></i> Severity</label>
+                <select name="severity" class="form-select">
+                    <option value="">All Severities</option>
+                    <option value="info" {% if selected_severity == 'info' %}selected{% endif %}>Info (50%)</option>
+                    <option value="warning" {% if selected_severity == 'warning' %}selected{% endif %}>Warning (75%)</option>
+                    <option value="danger" {% if selected_severity == 'danger' %}selected{% endif %}>Danger (90%)</option>
+                    <option value="critical" {% if selected_severity == 'critical' %}selected{% endif %}>Critical (100%)</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- History Items -->
+    {% if history %}
+        {% for item in history %}
+        <div class="history-item {{ item.severity }}">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <i class="fas {% if item.severity == 'info' %}fa-info-circle{% elif item.severity == 'warning' %}fa-exclamation-triangle{% elif item.severity == 'danger' %}fa-exclamation-circle{% else %}fa-skull-crossbones{% endif %} severity-icon" 
+                       style="color: {% if item.severity == 'info' %}#17a2b8{% elif item.severity == 'warning' %}#ffc107{% elif item.severity == 'danger' %}#fd7e14{% else %}#dc3545{% endif %};"></i>
+                </div>
+                <div class="col">
+                    <h5 class="mb-1">{{ item.category }}</h5>
+                    <p class="mb-1">
+                        <strong>{{ item.threshold_level }}% threshold reached</strong>
+                        <span class="badge {% if item.severity == 'info' %}bg-info{% elif item.severity == 'warning' %}bg-warning text-dark{% elif item.severity == 'danger' %}bg-danger{% else %}bg-dark{% endif %} ms-2">
+                            {{ item.severity|upper }}
+                        </span>
+                    </p>
+                    <small class="text-muted">
+                        <i class="fas fa-clock"></i> {{ item.triggered_at }}
+                    </small>
+                </div>
+                <div class="col-md-3 text-end">
+                    <div class="mb-1">
+                        <strong>Spent:</strong> ₱{{ item.current_spending|floatformat:2 }}
+                    </div>
+                    <div class="mb-1">
+                        <strong>Budget:</strong> ₱{{ item.budget_limit|floatformat:2 }}
+                    </div>
+                    <div>
+                        <strong>Usage:</strong> 
+                        <span class="badge {% if item.usage_percent >= 100 %}bg-danger{% elif item.usage_percent >= 90 %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                            {{ item.usage_percent|floatformat:1 }}%
+                        </span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    {% if item.acknowledged %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-check"></i> Acknowledged
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-bell"></i> Unread
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle"></i> No alert history found for the selected filters.
+        </div>
+    {% endif %}
+    
+    {% if history|length >= 100 %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i> Showing the 100 most recent alerts. Use filters to narrow down results.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

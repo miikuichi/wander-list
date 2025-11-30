@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Budget Analysis - PisoHeroes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analysis-header {
+        background: linear-gradient(135deg, #34c54a 0%, #28a745 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(52, 197, 74, 0.2);
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .category-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid;
+        transition: all 0.2s;
+    }
+    
+    .category-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .category-card.excellent { border-left-color: #28a745; }
+    .category-card.good { border-left-color: #34c54a; }
+    .category-card.warning { border-left-color: #ffc107; }
+    .category-card.critical { border-left-color: #dc3545; }
+    
+    .health-score {
+        display: inline-block;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: white;
+    }
+    
+    .progress {
+        height: 25px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .prediction-box {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-top: 1rem;
+        border-left: 3px solid #17a2b8;
+    }
+    
+    .prediction-box.danger {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+    }
+    
+    .badge-large {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 0.5rem 0;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .metric-row:last-child {
+        border-bottom: none;
+    }
+    
+    .metric-label {
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .metric-value {
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="analysis-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-chart-line"></i> Budget Analysis</h1>
+                <p class="mb-0">{{ current_month }} • {{ days_remaining }} days remaining</p>
+            </div>
+            <div>
+                <a href="{% url 'budget_alerts:alerts_page' %}" class="btn btn-light">
+                    <i class="fas fa-bell"></i> Manage Alerts
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Overall Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Total Budget</div>
+                <div class="stat-value text-primary">₱{{ total_budget|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Total Spent</div>
+                <div class="stat-value" style="color: {% if overall_usage > 100 %}#dc3545{% elif overall_usage > 85 %}#ffc107{% else %}#28a745{% endif %}">
+                    ₱{{ total_actual|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Overall Usage</div>
+                <div class="stat-value" style="color: {% if overall_usage > 100 %}#dc3545{% elif overall_usage > 85 %}#ffc107{% else %}#28a745{% endif %}">
+                    {{ overall_usage|floatformat:1 }}%
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Categories at Risk</div>
+                <div class="stat-value text-danger">{{ categories_warning }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Category Analysis -->
+    <h3 class="mb-3"><i class="fas fa-list"></i> Category Breakdown</h3>
+    
+    {% if analysis_data %}
+        {% for item in analysis_data %}
+        <div class="category-card {{ item.health.level }}">
+            <div class="row align-items-center">
+                <!-- Category Info -->
+                <div class="col-md-2">
+                    <h4 class="mb-1">{{ item.category }}</h4>
+                    <span class="badge {% if item.status == 'over' %}bg-danger{% elif item.status == 'on_target' %}bg-success{% else %}bg-info{% endif %}">
+                        {{ item.status|upper }}
+                    </span>
+                </div>
+                
+                <!-- Health Score -->
+                <div class="col-md-1 text-center">
+                    <div class="health-score" style="background-color: {{ item.health.color }};">
+                        {{ item.health.score }}
+                    </div>
+                    <small class="d-block mt-1 text-muted">{{ item.health.level|title }}</small>
+                </div>
+                
+                <!-- Budget Progress -->
+                <div class="col-md-5">
+                    <div class="progress">
+                        <div class="progress-bar" 
+                             role="progressbar" 
+                             style="width: {{ item.usage_percent|floatformat:0 }}%; background-color: {{ item.health.color }};"
+                             aria-valuenow="{{ item.usage_percent|floatformat:0 }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ item.usage_percent|floatformat:1 }}%
+                        </div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Spent:</span>
+                        <span class="metric-value">₱{{ item.actual|floatformat:2 }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Budget:</span>
+                        <span class="metric-value">₱{{ item.budget|floatformat:2 }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Variance:</span>
+                        <span class="metric-value" style="color: {% if item.variance < 0 %}#dc3545{% else %}#28a745{% endif %}">
+                            {% if item.variance < 0 %}-{% endif %}₱{{ item.variance|abs|floatformat:2 }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Prediction -->
+                <div class="col-md-4">
+                    <div class="prediction-box {% if item.prediction.will_breach %}danger{% endif %}">
+                        <h6>
+                            <i class="fas fa-crystal-ball"></i> 
+                            {% if item.prediction.will_breach %}
+                                ⚠️ Breach Predicted
+                            {% else %}
+                                ✅ On Track
+                            {% endif %}
+                        </h6>
+                        <p class="mb-2 small">{{ item.prediction.message }}</p>
+                        
+                        <div class="metric-row">
+                            <span class="metric-label">Daily Average:</span>
+                            <span class="metric-value">₱{{ item.prediction.daily_average|floatformat:2 }}</span>
+                        </div>
+                        
+                        {% if item.prediction.will_breach %}
+                        <div class="metric-row">
+                            <span class="metric-label">Recommended Daily:</span>
+                            <span class="metric-value text-success">₱{{ item.prediction.recommended_daily_limit|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="metric-row">
+                            <span class="metric-label">Predicted Total:</span>
+                            <span class="metric-value">₱{{ item.prediction.predicted_spending|floatformat:2 }}</span>
+                        </div>
+                        
+                        <span class="badge bg-secondary mt-2">
+                            {{ item.prediction.confidence|title }} Confidence
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> {{ item.health.message }}
+                </small>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> No budget data available. 
+            <a href="{% url 'budget_alerts:alerts_page' %}">Create budget alerts</a> to start tracking.
+        </div>
+    {% endif %}
+    
+    <!-- Action Recommendations -->
+    {% if categories_warning > 0 %}
+    <div class="alert alert-warning mt-4">
+        <h5><i class="fas fa-exclamation-triangle"></i> Recommended Actions</h5>
+        <ul class="mb-0">
+            {% for item in analysis_data %}
+                {% if item.health.level == 'critical' or item.health.level == 'warning' %}
+                <li>
+                    <strong>{{ item.category }}:</strong> 
+                    {% if item.prediction.will_breach %}
+                        Reduce daily spending to ₱{{ item.prediction.recommended_daily_limit|floatformat:2 }} to stay within budget.
+                    {% else %}
+                        Monitor spending closely - approaching budget limit.
+                    {% endif %}
+                </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

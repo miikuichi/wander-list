@@ -3,6 +3,8 @@ from django.contrib import messages
 from supabase_service import get_service_client
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
+from login.decorators import require_authentication, require_owner
+from audit_logs.services import log_create, log_update, log_delete
 import logging
 
 logger = logging.getLogger(__name__)
@@ -232,6 +234,7 @@ def get_category_budget_status(user_id, category_name):
         return None
 
 
+@require_authentication
 def expenses_view(request):
     """
     Displays the expenses page and handles new expense submissions using Supabase.
@@ -242,9 +245,6 @@ def expenses_view(request):
     - Category budget limit checking
     """
     user_id = request.session.get('user_id')
-    
-    if not user_id:
-        return redirect('login:login_page')
     
     # Get daily allowance info for display
     allowance_info = get_daily_allowance_remaining(user_id)
@@ -469,6 +469,7 @@ def expenses_view(request):
     return render(request, 'expenses/expenses.html', context)
 
 
+@require_owner(resource_type='expense', id_param='expense_id')
 def edit_expense_view(request, expense_id):
     """
     Handles editing an existing expense.
@@ -477,9 +478,6 @@ def edit_expense_view(request, expense_id):
     Now includes daily allowance and budget checking.
     """
     user_id = request.session.get('user_id')
-    
-    if not user_id:
-        return redirect('login:login_page')
     
     supabase = get_service_client()
     
@@ -613,15 +611,13 @@ def edit_expense_view(request, expense_id):
             return redirect('expenses')
 
 
+@require_owner(resource_type='expense', id_param='expense_id')
 def delete_expense_view(request, expense_id):
     """
     Handles deleting an expense.
     POST only: Deletes the expense from Supabase.
     """
     user_id = request.session.get('user_id')
-    
-    if not user_id:
-        return redirect('login:login_page')
     
     if request.method == 'POST':
         try:
@@ -659,15 +655,13 @@ def delete_expense_view(request, expense_id):
     return redirect('expenses')
 
 
+@require_authentication
 def add_income_view(request):
     """
     Handles adding extra income (tips, gifts, side hustles, etc).
     This income is added to the daily wallet balance and carries over.
     """
     user_id = request.session.get('user_id')
-    
-    if not user_id:
-        return redirect('login:login_page')
     
     if request.method == 'POST':
         try:

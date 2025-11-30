@@ -393,7 +393,23 @@
                 return false;
             }
             
+            // Save last used category to cache
+            if (typeof CacheManager !== 'undefined') {
+                CacheManager.setLastCategory(category);
+            }
+            
             return true;
         });
+        
+        // Load last used category on page load
+        if (typeof CacheManager !== 'undefined') {
+            const lastCategory = CacheManager.getLastCategory();
+            if (lastCategory) {
+                const categorySelect = document.getElementById('category');
+                if (categorySelect) {
+                    categorySelect.value = lastCategory;
+                }
+            }
+        }
     </script>
 {% endblock %}

@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/unread-count/', views.get_unread_count, name='unread_count'),
     path('api/recent/', views.get_recent_notifications, name='recent_notifications'),
     path('api/send-test-email/', views.send_test_email, name='send_test_email'),
+    path('api/mark-all-read/', views.mark_all_as_read, name='mark_all_read'),
 ]
