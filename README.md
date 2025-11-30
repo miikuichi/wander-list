@@ -110,27 +110,26 @@ Follow these steps to run the project locally.
 
 git clone [https://github.com/your-username/wander-list.git](https://github.com/your-username/wander-list.git)
 cd wander-list
-2. Create a Virtual Environment
-Bash
 
+### 2. Create a Virtual Environment
+```Bash
 python -m venv venv
 # Windows
 venv\Scripts\activate
 # macOS/Linux
 source venv/bin/activate
-3. Install Dependencies
-Bash
+
+###3. Install Dependencies
+```Bash
 
 pip install -r requirements.txt
-4. Configure Environment Variables
+###4. Configure Environment Variables
 Create a .env file in the root directory (refer to the Environment Variables section below).
 
-5. Run Migrations
-Bash
-
+###5. Run Migrations
+```Bash
 python manage.py migrate
-6. Start the Server
-Bash
-
+###6. Start the Server
+```Bash
 python manage.py runserver
 Visit http://127.0.0.1:8000 in your browser.
