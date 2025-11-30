@@ -6,6 +6,7 @@ class User(models.Model):
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128)
+    is_admin = models.BooleanField(default=False)
     daily_allowance = models.DecimalField(
         max_digits=12, 
         decimal_places=2, 
