@@ -7,18 +7,21 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if request.user_authenticated %}
                     {% if not request.session.is_admin %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'expenses:expense_list' %}">Expenses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'savings_goals:goal_list' %}">Goals</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">Reports</a>
-                        </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Expenses</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Goals</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Reports</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Settings</a>
+                    </li>
                     {% else %}
                         <li class="nav-item">
                             <span class="nav-link text-muted"><i class="fas fa-shield-alt"></i> Administrator Mode</span>
@@ -28,10 +31,13 @@
             </ul>
 
             {% if request.user_authenticated and not request.session.is_admin %}
-                <form class="d-flex me-3" role="search">
-                    <input class="form-control me-2" type="search" placeholder="Search expenses..." aria-label="Search">
-                    <button class="btn btn-outline-secondary d-none d-md-block" type="submit"><i class="fas fa-search"></i></button>
-                </form>
+            <form class="d-flex me-3" role="search">
+                <input class="form-control me-2 flex-grow-1" type="search" placeholder="Search expenses or goals..." aria-label="Search">
+                
+                <button class="btn btn-outline-secondary d-none d-md-block" type="submit">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
             {% endif %}
 
             <ul class="navbar-nav d-flex align-items-center">

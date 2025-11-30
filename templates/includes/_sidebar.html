@@ -19,10 +19,10 @@
         {% else %}
             
             {% url 'dashboard' as dashboard_url %}
-            {% url 'expenses:expense_list' as expenses_url %} 
-            {% url 'budget_alerts:alerts_list' as budget_alerts_url %}
-            {% url 'savings_goals:goal_list' as savings_goals_url %}
-            {% url 'reminders:list' as reminders_url %}
+            {% url 'expenses' as expenses_url %} 
+            {% url 'alerts_page' as budget_alerts_url %}
+            {% url 'savings_goals:goals' as savings_goals_url %}
+            {% url 'reminders:home' as reminders_url %}
 
             <a class="nav-link {% if request.path == dashboard_url %}active{% endif %}" href="{{ dashboard_url }}">
                 <i class="fas fa-home"></i> Home
@@ -50,10 +50,5 @@
             </a>
 
         {% endif %}
-        
-        <a class="nav-link mt-auto text-danger" href="{% url 'login:logout' %}">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
-        
     </nav>
 </div>
