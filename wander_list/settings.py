@@ -197,3 +197,7 @@ FCM_SERVER_KEY = os.getenv('FCM_SERVER_KEY', '')
 
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestFilesStorage'
+
+
+# Security Setting: Log out user when browser closes
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

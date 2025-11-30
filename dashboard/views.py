@@ -9,6 +9,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from calendar import monthrange
 from supabase_service import get_service_client
 import logging
+from login.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -369,3 +370,49 @@ def update_monthly_allowance_view(request):
 
     return redirect('dashboard')  # adjust to your URL name if different
 # Label: END_UPDATE_MONTHLY_ALLOWANCE_VIEW
+
+
+def admin_dashboard_view(request):
+    """
+    Displays a list of all registered users.
+    Fetches latest data from Supabase to keep local DB in sync.
+    """
+    # 1. Security Check
+    if not request.session.get('is_admin'):
+        return redirect('dashboard')
+
+    # 2. SYNC: Fetch all users from Supabase and update local DB
+    try:
+        supabase = get_service_client()
+        # Fetch all users from the 'login_user' table
+        response = supabase.table('login_user').select('*').execute()
+        
+        if response.data:
+            print(f"DEBUG: Found {len(response.data)} users in Supabase. Syncing...")
+            
+            for remote_user in response.data:
+                # Update local user if exists, or create if missing
+                User.objects.update_or_create(
+                    email=remote_user['email'],
+                    defaults={
+                        'username': remote_user.get('username', remote_user['email'].split('@')[0]),
+                        'is_admin': remote_user.get('is_admin', False),
+                        # If creating a new user, give a placeholder password
+                        # The real password verification happens via Supabase anyway
+                        'password': remote_user.get('password', 'synced_from_supabase') 
+                    }
+                )
+    except Exception as e:
+        # Just log error, don't crash the page if Supabase is down
+        logger.error(f"Failed to sync users from Supabase: {e}")
+        print(f"DEBUG: Sync error: {e}")
+
+    # 3. Fetch all local users (now fully synced)
+    users = User.objects.all().order_by('-id')
+    
+    context = {
+        'users': users,
+        'user_count': users.count()
+    }
+    
+    return render(request, 'dashboard/admin_dashboard.html', context)
