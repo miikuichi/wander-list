@@ -6,6 +6,7 @@ import logging
 from .forms import LoginForm, RegistrationForm
 from supabase_service import sign_up, sign_in, get_service_client, get_anon_client
 from .models import User
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +124,13 @@ def register(request):
 
 
 def login_view(request):
-    """Handles user login using Supabase authentication."""
-    # If user is already logged in, redirect to dashboard
+    """Handles user login with enhanced debugging and error tracing."""
+    
+    # 0. Session Check: If already logged in, redirect immediately
     if 'user_id' in request.session:
+        print(f"DEBUG: User {request.session.get('username')} already in session. Redirecting.")
+        if request.session.get('is_admin'):
+            return redirect('admin_dashboard')
         return redirect('dashboard')
     
     if request.method == 'POST':
@@ -134,83 +139,144 @@ def login_view(request):
             email = form.cleaned_data['email']
             password = form.cleaned_data['password']
             
+            print(f"DEBUG: Starting login process for email: {email}")
+
             try:
-                # Attempt to sign in with Supabase
+                # ---------------------------------------------------------
+                # STEP 1: Supabase Authentication
+                # ---------------------------------------------------------
+                print("DEBUG: Step 1 - Calling Supabase sign_in...")
                 signin_response = sign_in(email, password)
                 
-                # Log the response for debugging
-                logger.info(f"Supabase signin response: {signin_response}")
-                print(f"DEBUG: Login response type: {type(signin_response)}")
-                print(f"DEBUG: Login response: {signin_response}")
+                # Debugging: Print the raw response type to understand what we got back
+                print(f"DEBUG: Supabase response type: {type(signin_response)}")
                 
-                # Extract access_token from response
+                # Extract access_token and user_data safely
                 access_token = None
                 user_data = None
                 
-                # Handle AuthResponse object (from supabase_auth package)
+                # Handle different Supabase client response structures
                 if hasattr(signin_response, 'user'):
                     user_data = signin_response.user
+                
                 if hasattr(signin_response, 'session'):
+                    # Check if session exists and has access_token
                     if signin_response.session and hasattr(signin_response.session, 'access_token'):
                         access_token = signin_response.session.access_token
                 
-                # Fallback for dict response (older client versions)
+                # Fallback for dictionary responses (older clients)
                 if isinstance(signin_response, dict):
                     session_data = signin_response.get('session', {})
                     user_data = user_data or signin_response.get('user', {})
                     if isinstance(session_data, dict):
                         access_token = access_token or session_data.get('access_token')
                 
-                # Check if login was successful
                 if not user_data:
-                    raise ValueError("Login failed: No user data returned from Supabase")
+                    # If we reached here, Supabase didn't return a user. Throw error to catch block.
+                    raise ValueError(f"Login failed: No user data returned. Raw response: {signin_response}")
                 
-                # Try to get the user from our local model
+                print("DEBUG: Step 1 Success - Supabase User authenticated.")
+
+                # ---------------------------------------------------------
+                # STEP 2: Local Database Sync (Get or Create)
+                # ---------------------------------------------------------
+                print("DEBUG: Step 2 - Syncing with local SQLite database...")
                 try:
                     user = User.objects.get(email=email)
-                    
-                    # Store authentication info in session
-                    request.session['user_id'] = user.id
-                    request.session['username'] = user.username
-                    request.session['email'] = email
-                    
-                    if access_token:
-                        request.session['supabase_access_token'] = access_token
-                    
-                    messages.success(request, f"Welcome back, {user.username}!")
-                    return redirect('dashboard')
+                    print(f"DEBUG: Local user found: {user.username} (ID: {user.id})")
+                    welcome_message = f"Welcome back, {user.username}!"
                 except User.DoesNotExist:
-                    # User exists in Supabase but not in our PostgreSQL DB
-                    # Create the user in our database
-                    username = email.split('@')[0]  # Default username from email
+                    print("DEBUG: User not found locally. Creating new local user...")
+                    username = email.split('@')[0]
                     user = User.objects.create(
                         username=username,
                         email=email,
-                        password=password  # Store unhashed password for testing
+                        password=password  # Note: In production, hash this!
                     )
+                    print(f"DEBUG: New local user created: {user.username} (ID: {user.id})")
+                    welcome_message = f"Welcome, {username}!"
+
+                # ---------------------------------------------------------
+                # STEP 3: Admin Status Sync (Supabase DB -> Local DB)
+                # ---------------------------------------------------------
+                print("DEBUG: Step 3 - Checking Admin Status from Supabase...")
+                try:
+                    supabase = get_service_client()
+                    # Query the 'login_user' table in Supabase
+                    response = supabase.table('login_user').select('is_admin').eq('email', email).execute()
                     
-                    request.session['user_id'] = user.id
-                    request.session['username'] = username
-                    request.session['email'] = email
-                    
-                    if access_token:
-                        request.session['supabase_access_token'] = access_token
-                    
-                    messages.success(request, f"Welcome, {username}!")
+                    if response.data and len(response.data) > 0:
+                        remote_is_admin = response.data[0].get('is_admin', False)
+                        print(f"DEBUG: Supabase reports is_admin = {remote_is_admin}")
+                        
+                        # Only write to DB if the status has changed
+                        if user.is_admin != remote_is_admin:
+                            user.is_admin = remote_is_admin
+                            user.save()
+                            print(f"DEBUG: Local DB updated. User {user.username} is_admin set to {remote_is_admin}")
+                    else:
+                        print("DEBUG: User not found in 'login_user' table on Supabase (Admin check skipped).")
+                            
+                except Exception as sync_error:
+                    # We catch this separately so login doesn't fail just because admin-sync failed
+                    print("DEBUG: [WARNING] Admin sync failed.")
+                    print("vvvvvvvvv ADMIN SYNC ERROR vvvvvvvvv")
+                    traceback.print_exc()
+                    print("^^^^^^^^^ ADMIN SYNC ERROR ^^^^^^^^^")
+                    logger.error(f"Failed to sync admin status: {sync_error}")
+
+                # ---------------------------------------------------------
+                # STEP 4: Session Setup
+                # ---------------------------------------------------------
+                request.session['user_id'] = user.id
+                request.session['username'] = user.username
+                request.session['email'] = email
+                request.session['is_admin'] = user.is_admin
+                
+                if access_token:
+                    request.session['supabase_access_token'] = access_token
+                
+                print(f"DEBUG: Step 4 Success - Session set. Admin: {user.is_admin}")
+                messages.success(request, welcome_message)
+
+                # ---------------------------------------------------------
+                # STEP 5: Redirect
+                # ---------------------------------------------------------
+                if user.is_admin:
+                    print("DEBUG: Redirecting to ADMIN dashboard.")
+                    return redirect('admin_dashboard')
+                else:
+                    print("DEBUG: Redirecting to USER dashboard.")
                     return redirect('dashboard')
+
             except Exception as e:
-                logger.error(f"Login failed: {e}")
-                print(f"DEBUG: Login error: {e}")
-                import traceback
+                # ---------------------------------------------------------
+                # CRITICAL ERROR HANDLING
+                # ---------------------------------------------------------
+                print("\n" + "="*50)
+                print("CRITICAL LOGIN ERROR ENCOUNTERED")
+                print("="*50)
+                print(f"Error Message: {str(e)}")
+                print("-" * 20 + " TRACEBACK START " + "-" * 20)
+                
+                # This prints the full stack trace to your terminal
                 traceback.print_exc()
+                
+                print("-" * 20 + " TRACEBACK END " + "-" * 20)
+                print("="*50 + "\n")
+                
+                # Also log to Django's standard logging (good for production logs)
+                logger.error(f"Login View Exception: {e}", exc_info=True)
+                
                 messages.error(request, f"Login failed: {str(e)}")
-                # Don't redirect on error - stay on login page
+                # Stay on login page
         else:
+            print(f"DEBUG: Form validation failed. Errors: {form.errors}")
             messages.error(request, "Login failed. Please check your email and password.")
     else:
         form = LoginForm()
+        
     return render(request, 'login/login.html', {'form': form})
-
 def google_login(request):
     """Initiate Google OAuth login flow."""
     try:
