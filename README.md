@@ -74,7 +74,7 @@ Whether you are saving for a dream vacation or just trying to stick to a daily a
 
 ## 🎓 Project Context
 
-This application was developed as a comprehensive capstone project for the following subjects:
+This application was developed as a comprehensive project for the following subjects:
 
 * **IT317:** Project Management for IT
 * **CSIT327:** Information Management 2
