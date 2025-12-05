@@ -12,9 +12,12 @@
                 <i class="fas fa-shield-alt"></i> Admin Panel
             </a>
             
-            <a class="nav-link disabled text-muted" href="#">
-                <i class="fas fa-users-cog"></i> User Management
-            </a>
+            <li class="nav-item">
+                <a class="nav-link {% if current_section == 'admin_analytics' %}active{% endif %}"
+                    href="{% url 'audit_logs:admin_analytics' %}">
+                    <i class="fas fa-chart-line me-2"></i> Usage Analytics
+                </a>
+            </li>
 
         {% else %}
             

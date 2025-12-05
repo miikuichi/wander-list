@@ -35,6 +35,10 @@ def dashboard_view(request):
     - Recent expenses
     - Budget alerts
     """
+
+    if request.session.get('is_admin'):
+        return redirect('admin_dashboard')
+    
     user_id = request.session.get('user_id')
     
     if not user_id:
@@ -392,7 +396,8 @@ def cache_settings_view(request):
 def admin_dashboard_view(request):
     """
     Displays a list of all registered users.
-    Fetches latest data from Supabase to keep local DB in sync.
+    Fetches latest data from Supabase to keep local DB in sync,
+    and supports searching by username or email.
     """
     # 1. Security Check
     if not request.session.get('is_admin'):
@@ -401,35 +406,52 @@ def admin_dashboard_view(request):
     # 2. SYNC: Fetch all users from Supabase and update local DB
     try:
         supabase = get_service_client()
-        # Fetch all users from the 'login_user' table
         response = supabase.table('login_user').select('*').execute()
-        
+
         if response.data:
-            print(f"DEBUG: Found {len(response.data)} users in Supabase. Syncing...")
-            
             for remote_user in response.data:
-                # Update local user if exists, or create if missing
                 User.objects.update_or_create(
                     email=remote_user['email'],
                     defaults={
-                        'username': remote_user.get('username', remote_user['email'].split('@')[0]),
+                        'username': remote_user.get(
+                            'username',
+                            remote_user['email'].split('@')[0]
+                        ),
                         'is_admin': remote_user.get('is_admin', False),
-                        # If creating a new user, give a placeholder password
-                        # The real password verification happens via Supabase anyway
-                        'password': remote_user.get('password', 'synced_from_supabase') 
+                        'password': remote_user.get(
+                            'password', 'synced_from_supabase'
+                        )
                     }
                 )
     except Exception as e:
-        # Just log error, don't crash the page if Supabase is down
         logger.error(f"Failed to sync users from Supabase: {e}")
-        print(f"DEBUG: Sync error: {e}")
 
-    # 3. Fetch all local users (now fully synced)
-    users = User.objects.all().order_by('-id')
-    
+    # 3. SEARCH + STATS
+    search_query = request.GET.get('q', '').strip()
+
+    # base queryset (for table)
+    users_qs = User.objects.all()
+
+    if search_query:
+        users_qs = users_qs.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+
+    users_qs = users_qs.order_by('-id')
+
+    # stats for header cards (based on ALL users, not just filtered)
+    all_users = User.objects.all()
+    total_users = all_users.count()
+    total_admins = all_users.filter(is_admin=True).count()
+    total_regular = all_users.filter(is_admin=False).count()
+
     context = {
-        'users': users,
-        'user_count': users.count()
+        'users': users_qs,
+        'user_count': total_users,
+        'admin_count': total_admins,
+        'regular_user_count': total_regular,
+        'search_query': search_query,
     }
-    
+
     return render(request, 'dashboard/admin_dashboard.html', context)

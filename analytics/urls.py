@@ -10,7 +10,6 @@ urlpatterns = [
     # Main analytics dashboard
     path('', views.analytics_dashboard, name='dashboard'),
     
-    path('export-csv/', views.export_visual_report_csv, name='analytics_export_csv'),
     # API endpoints for chart data
     path('api/daily-spending/', views.api_daily_spending, name='api_daily_spending'),
     path('api/category-breakdown/', views.api_category_breakdown, name='api_category_breakdown'),
