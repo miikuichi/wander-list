@@ -1,0 +1,164 @@
+_{% extends 'base.html' %}
+{% block title %}Admin Usage Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold">
+            <i class="fas fa-chart-bar me-2"></i> Usage Analytics
+        </h2>
+
+        <a href="{% url 'audit_logs:admin_export_csv' %}" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-file-csv me-1"></i> Export CSV
+        </a>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h6>Total Actions</h6>
+                    <h3>{{ total_actions }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h6>Logins</h6>
+                    <h3>{{ login_count }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h6>Created Records</h6>
+                    <h3>{{ create_count }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <h6>Updated Records</h6>
+                    <h3>{{ update_count }}</h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Filters -->
+    <form method="GET" class="row g-3 mb-4">
+
+        <div class="col-md-3">
+            <select name="action_type" class="form-select">
+                <option value="">Action Type</option>
+                {% for code, name in action_types %}
+                    <option value="{{ code }}" {% if code == selected_action %}selected{% endif %}>
+                        {{ name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <select name="resource_type" class="form-select">
+                <option value="">Resource Type</option>
+                {% for code, name in resource_types %}
+                    <option value="{{ code }}" {% if code == selected_resource %}selected{% endif %}>
+                        {{ name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <select name="days" class="form-select">
+                <option value="7">Last 7 days</option>
+                <option value="30" {% if selected_days == 30 %}selected{% endif %}>30 days</option>
+                <option value="90">90 days</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100">
+                Apply Filters
+            </button>
+        </div>
+
+    </form>
+
+    <!-- Most used features -->
+    <div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0">
+            <i class="fas fa-star me-2"></i> Most Used Features
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if top_features %}
+            <ul class="list-unstyled mb-0">
+                {% for feature in top_features %}
+                    <li class="d-flex justify-content-between py-1 border-bottom">
+                        <span>{{ feature.label }}</span>
+                        <span class="fw-bold">{{ feature.count }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted mb-0">
+                No usage data available for this period.
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+
+    <!-- Activity Table -->
+    <div class="card shadow-sm">
+
+        <div class="card-header fw-bold">
+            Recent Activity
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Resource</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.timestamp|date:"Y-m-d H:i" }}</td>
+                        <td>{{ log.user_id }}</td>
+                        <td>{{ log.action_type }}</td>
+                        <td>{{ log.resource_type }}</td>
+                        <td>{{ log.ip_address }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
