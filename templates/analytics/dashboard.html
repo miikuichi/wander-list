@@ -51,6 +51,14 @@
         </div>
     </div>
 
+    <div class="text-end mb-4">
+        <button type="button"
+                onclick="exportCsv()"
+                class="btn btn-outline-success">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </button>
+    </div>
+
     <!-- Summary Stats -->
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
@@ -246,6 +254,7 @@ const colors = {
 
 const chartColors = [colors.primary, colors.info, colors.warning, colors.danger, colors.purple, '#00bcd4', '#ff9800', '#e91e63'];
 
+const EXPORT_CSV_URL = "{% url 'analytics:user_csv_export' %}";
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     updateCharts();
@@ -274,6 +283,18 @@ function setQuickRange(type) {
     document.getElementById('end-date').value = today.toISOString().split('T')[0];
     
     updateCharts();
+}
+
+function exportCsv() {
+    const start = document.getElementById('start-date').value;
+    const end = document.getElementById('end-date').value;
+
+    const params = new URLSearchParams();
+    if (start) params.append('start_date', start);
+    if (end) params.append('end_date', end);
+
+    const url = EXPORT_CSV_URL + (params.toString() ? '?' + params.toString() : '');
+    window.location.href = url;  // trigger file download
 }
 
 async function updateCharts() {
