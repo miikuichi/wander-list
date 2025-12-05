@@ -18,6 +18,9 @@ from decimal import Decimal
 from collections import defaultdict
 import calendar
 import logging
+import csv
+from django.http import HttpResponse
+from django.views.decorators.http import require_GET
 
 logger = logging.getLogger(__name__)
 
@@ -369,3 +372,156 @@ def api_hourly_patterns(request):
     except Exception as e:
         logger.error(f"Error fetching hourly patterns: {e}", exc_info=True)
         return JsonResponse({'error': 'Server error'}, status=500)
+    
+
+@require_GET
+@require_authentication
+def export_visual_report_csv(request):
+    """
+    Export the current user's analytics report as CSV including:
+    - Raw transactions
+    - Daily totals
+    - Category breakdown
+    - Weekly totals
+    - Monthly totals
+    - Hourly patterns
+    """
+    user_id = request.session.get('user_id')
+
+    today = date.today()
+    start_date_str = request.GET.get('start_date', today.replace(day=1).isoformat())
+    end_date_str = request.GET.get('end_date', today.isoformat())
+
+    try:
+        start_date = date.fromisoformat(start_date_str)
+        end_date = date.fromisoformat(end_date_str)
+    except ValueError:
+        start_date = today.replace(day=1)
+        end_date = today
+
+    supabase = get_service_client()
+
+    try:
+        response = supabase.table('expenses') \
+            .select('date, category, amount, notes, created_at') \
+            .eq('user_id', user_id) \
+            .gte('date', start_date.isoformat()) \
+            .lte('date', end_date.isoformat()) \
+            .order('date') \
+            .execute()
+
+        expenses = response.data or []
+
+    except Exception as e:
+        logger.error(f"CSV export failed: {e}", exc_info=True)
+        expenses = []
+
+    filename = f"pisoheroes_user_report_{start_date.isoformat()}_to_{end_date.isoformat()}.csv"
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    # ================= RAW TRANSACTIONS =================
+    writer.writerow(['RAW TRANSACTIONS'])
+    writer.writerow(['Date', 'Category', 'Amount', 'Notes'])
+
+    for exp in expenses:
+        writer.writerow([
+            exp.get('date', ''),
+            exp.get('category', ''),
+            exp.get('amount', ''),
+            (exp.get('notes') or '').replace('\n', ' ').replace('\r', ' ')
+        ])
+
+    writer.writerow([])
+
+    # ================= DAILY TOTALS =================
+    writer.writerow(['DAILY TOTALS'])
+    writer.writerow(['Date', 'Total Amount'])
+
+    daily_totals = defaultdict(Decimal)
+    for exp in expenses:
+        daily_totals[exp['date']] += Decimal(str(exp['amount']))
+
+    for d in sorted(daily_totals):
+        writer.writerow([d, float(daily_totals[d])])
+
+    writer.writerow([])
+
+    # ================= CATEGORY BREAKDOWN =================
+    writer.writerow(['CATEGORY BREAKDOWN'])
+    writer.writerow(['Category', 'Total Amount', 'Percentage'])
+
+    category_totals = defaultdict(Decimal)
+    total_all = Decimal('0')
+
+    for exp in expenses:
+        category = exp.get('category', 'Other')
+        category_totals[category] += Decimal(str(exp['amount']))
+        total_all += Decimal(str(exp['amount']))
+
+    for cat, amt in sorted(category_totals.items(), key=lambda x: x[1], reverse=True):
+        percent = (amt / total_all * 100) if total_all else 0
+        writer.writerow([cat, float(amt), round(percent, 2)])
+
+    writer.writerow([])
+
+    # ================= WEEKLY TOTALS =================
+    writer.writerow(['WEEKLY TOTALS'])
+    writer.writerow(['Week Range', 'Total Amount'])
+
+    weekly_totals = defaultdict(Decimal)
+
+    for exp in expenses:
+        d = date.fromisoformat(exp['date'])
+        week_start = d - timedelta(days=d.weekday())
+        week_end = week_start + timedelta(days=6)
+
+        label = f"{week_start:%b %d} - {week_end:%b %d}"
+        weekly_totals[label] += Decimal(str(exp['amount']))
+
+    for week, amt in weekly_totals.items():
+        writer.writerow([week, float(amt)])
+
+    writer.writerow([])
+
+    # ================= MONTHLY TOTALS =================
+    writer.writerow(['MONTHLY TOTALS'])
+    writer.writerow(['Month', 'Total Amount'])
+
+    monthly_totals = defaultdict(Decimal)
+
+    for exp in expenses:
+        d = date.fromisoformat(exp['date'])
+        key = f"{d:%B %Y}"
+        monthly_totals[key] += Decimal(str(exp['amount']))
+
+    for month, amt in monthly_totals.items():
+        writer.writerow([month, float(amt)])
+
+    writer.writerow([])
+
+    # ================= HOURLY PATTERNS =================
+    writer.writerow(['HOURLY PATTERNS'])
+    writer.writerow(['Hour', 'Transactions', 'Total Amount'])
+
+    hourly_totals = defaultdict(lambda: {'count': 0, 'amount': Decimal('0')})
+
+    for exp in expenses:
+        if exp.get('created_at'):
+            try:
+                created = datetime.fromisoformat(exp['created_at'].replace('Z', '+00:00'))
+                hour = f"{created.hour:02d}:00"
+
+                hourly_totals[hour]['count'] += 1
+                hourly_totals[hour]['amount'] += Decimal(str(exp['amount']))
+            except Exception:
+                pass
+
+    for hour in sorted(hourly_totals):
+        data = hourly_totals[hour]
+        writer.writerow([hour, data['count'], float(data['amount'])])
+
+    return response
