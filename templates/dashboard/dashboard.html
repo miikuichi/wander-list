@@ -160,9 +160,19 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-header d-flex justify-content-between align-items-center">
-                        Budget Usage <i class="fas fa-chart-pie text-muted"></i>
+                        <span>Budget Usage</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <select id="budgetRangeSelect" class="form-select form-select-sm w-auto">
+                                <option value="daily" {% if budget_range == 'daily' %}selected{% endif %}>Daily</option>
+                                <option value="weekly" {% if budget_range == 'weekly' %}selected{% endif %}>Weekly</option>
+                                <option value="monthly" {% if budget_range == 'monthly' or not budget_range %}selected{% endif %}>Monthly</option>
+                            </select>
+                            <i class="fas fa-chart-pie text-muted ms-1"></i>
+                        </div>
                     </h5>
-                    <p class="text-muted mb-3">Spending breakdown by category (this month)</p>
+                    <p class="text-muted mb-3">
+                        Spending breakdown by category (this {{ budget_range_label|default:"month" }})
+                    </p>
 
                     {% if category_spending %}
                     <div style="width:100%; max-width:420px; margin:0 auto;">
@@ -175,6 +185,7 @@
                 </div>
             </div>
         </div>
+
 
         <!-- QUICK ACTIONS -->
         <div class="col-lg-4 col-md-12">
@@ -286,6 +297,14 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  const rangeSelect = document.getElementById('budgetRangeSelect');
+  if (rangeSelect) {
+    rangeSelect.addEventListener('change', function () {
+      const baseUrl = "{% url 'dashboard' %}";
+      window.location.href = baseUrl + "?budget_range=" + encodeURIComponent(this.value);
+    });
+  }
+
   {% if category_spending and category_spending|length > 0 %}
     const labels = [{% for cat in category_spending %}"{{ cat.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
     const dataValues = [{% for cat in category_spending %}{{ cat.spent|floatformat:2|default:"0.00" }}{% if not forloop.last %},{% endif %}{% endfor %}];
@@ -328,7 +347,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    // Optional legend below the chart
     const legendContainer = document.getElementById('budget-legend');
     const total = dataValues.reduce((a, b) => a + b, 0);
     let html = '<ul class="list-unstyled mb-0">';
@@ -342,4 +360,5 @@ document.addEventListener('DOMContentLoaded', function () {
   {% endif %}
 });
 </script>
+
 {% endblock %}

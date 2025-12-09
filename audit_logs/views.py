@@ -196,7 +196,8 @@ def admin_usage_analytics_view(request):
 
     # Base queryset: ALL logs in date range (all users)
     logs = AuditLog.objects.filter(
-        timestamp__gte=start_date, timestamp__lte=end_date
+        timestamp__gte=start_date,
+        timestamp__lte=end_date,
     )
 
     # Apply optional filters
@@ -206,35 +207,28 @@ def admin_usage_analytics_view(request):
     if resource_type:
         logs = logs.filter(resource_type=resource_type)
 
-    # ====== Overview metrics (use ALL logs) ======
+    # ====== Overview metrics ======
     total_actions = logs.count()
     login_count = logs.filter(action_type="LOGIN").count()
     created_count = logs.filter(action_type="CREATE").count()
     updated_count = logs.filter(action_type="UPDATE").count()
+    delete_count = logs.filter(action_type="DELETE").count()
 
     # ====== Most used features (exclude auth noise) ======
-    feature_logs = logs.exclude(
-        action_type__in=["LOGIN", "LOGOUT", "LOGIN_FAILED"]
-    ).exclude(resource_type="user")
+    feature_logs = (
+        logs
+        .exclude(action_type__in=["LOGIN", "LOGOUT", "LOGIN_FAILED"])
+        # optional: hide raw "user" resource so it focuses on app features
+        .exclude(resource_type="user")
+    )
 
-    # Group by resource_type and count
     top_features_qs = (
         feature_logs.values("resource_type")
         .annotate(count=Count("id"))
         .order_by("-count")[:5]
     )
 
-    # Nice labels for the resource types
-    FEATURE_LABELS = {
-        "expense": "Expenses",
-        "goal": "Savings Goals",
-        "alert": "Budget Alerts",
-        "reminder": "Reminders",
-        "monthly_allowance": "Monthly Allowance",
-        "system": "System",
-        "user": "Profile / Account",
-    }
-
+    # Use the global FEATURE_LABELS at top of file
     top_features = [
         {
             "name": FEATURE_LABELS.get(row["resource_type"], row["resource_type"]),
@@ -244,7 +238,7 @@ def admin_usage_analytics_view(request):
         for row in top_features_qs
     ]
 
-    # ====== Recent activity (still ALL logs with filters) ======
+    # ====== Recent activity table ======
     recent_logs = logs.order_by("-timestamp")[:100]
 
     context = {
@@ -253,8 +247,7 @@ def admin_usage_analytics_view(request):
         "login_count": login_count,
         "create_count": created_count,
         "update_count": updated_count,
-        # we’re not tracking delete explicitly in cards now, only if you want:
-        "delete_count": logs.filter(action_type="DELETE").count(),
+        "delete_count": delete_count,
 
         "top_features": top_features,
 
