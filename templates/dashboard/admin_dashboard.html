@@ -99,7 +99,7 @@
                                 {% endif %}
                             </td>
                             <td class="font-monospace">
-                                ₱{{ user.daily_allowance|default:"0.00" }}
+                                ₱{{ user.daily_allowance_value|floatformat:2 }}
                             </td>
                             <td class="px-4 text-end">
                                 <span class="badge bg-success">Active</span>

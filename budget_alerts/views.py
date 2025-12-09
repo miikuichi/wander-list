@@ -40,11 +40,10 @@ def alerts_page(request):
                     cleaned_data = form.cleaned_data
                     final_category_name = cleaned_data['final_category_name']
                     
-                    # Create budget alert in Supabase (SIMPLIFIED - no categories table)
                     now = datetime.now(timezone.utc).isoformat()
                     alert_data = {
                         'user_id': user_id,
-                        'category': final_category_name,  # Direct column, not FK
+                        'category': final_category_name,
                         'amount_limit': float(cleaned_data['amount_limit']),
                         'threshold_percent': cleaned_data['threshold_percent'],
                         'notify_dashboard': cleaned_data.get('notify_dashboard', True),
@@ -55,13 +54,27 @@ def alerts_page(request):
                         'updated_at': now
                     }
                     
-                    supabase.table('budget_alerts').insert(alert_data).execute()
+                    result = supabase.table('budget_alerts').insert(alert_data).execute()
+                    alert_id = result.data[0]['id'] if result.data else None
+
+                    if alert_id is not None:
+                        log_create(
+                            user_id=str(user_id),
+                            resource_type='alert',
+                            resource_id=str(alert_id),
+                            metadata=alert_data,
+                            request=request,
+                        )
                     
-                    logger.info(f"Budget alert created: user={user_id}, category={final_category_name}, "
-                              f"limit=₱{cleaned_data['amount_limit']}")
-                    messages.success(request, 
-                                   f"✅ Budget alert created for '{final_category_name}' "
-                                   f"(₱{cleaned_data['amount_limit']:.2f})!")
+                    logger.info(
+                        f"Budget alert created: user={user_id}, category={final_category_name}, "
+                        f"limit=₱{cleaned_data['amount_limit']}"
+                    )
+                    messages.success(
+                        request,
+                        f"✅ Budget alert created for '{final_category_name}' "
+                        f"(₱{cleaned_data['amount_limit']:.2f})!"
+                    )
                     return redirect("budget_alerts:alerts_page")
                     
                 except Exception as e:
@@ -70,7 +83,6 @@ def alerts_page(request):
         else:
             form = BudgetAlertForm(user=user_id)
         
-        # Fetch budget alerts from Supabase (SIMPLIFIED - category is direct column)
         alerts_response = supabase.table('budget_alerts')\
             .select('*')\
             .eq('user_id', user_id)\
@@ -80,12 +92,10 @@ def alerts_page(request):
         
         alerts = alerts_response.data if alerts_response.data else []
         
-        # Calculate current spending for each alert
         for alert in alerts:
             try:
-                category_name = alert['category']  # Direct column access
+                category_name = alert['category']
                 
-                # Get total spending for this category
                 expenses_response = supabase.table('expenses')\
                     .select('amount')\
                     .eq('user_id', user_id)\
@@ -120,6 +130,7 @@ def alerts_page(request):
     })
 
 
+
 def edit_alert(request, id):
     """
     AJAX modal edit view (returns JSON).
@@ -146,20 +157,8 @@ def edit_alert(request, id):
         alert_data = alert_response.data
 
         if request.method == "POST":
-            # Build mock instance for form validation (as you had)
-            class MockAlert:
-                def __init__(self, data):
-                    self.id = data['id']
-                    self.amount_limit = data['amount_limit']
-                    self.threshold_percent = data['threshold_percent']
-                    self.notify_dashboard = data['notify_dashboard']
-                    self.notify_email = data['notify_email']
-                    self.notify_push = data['notify_push']
-                    self.active = data['active']
-                    self.category = type('obj', (object,), {'name': data.get('category', '')})
-
-            mock_instance = MockAlert(alert_data)
-            form = BudgetAlertForm(request.POST, user=user_id, instance=mock_instance)
+            # IMPORTANT: pass alert_id so form can ignore this alert in duplicate check
+            form = BudgetAlertForm(request.POST, user=user_id, alert_id=id)
 
             if form.is_valid():
                 cleaned = form.cleaned_data
@@ -182,6 +181,8 @@ def edit_alert(request, id):
                     .eq('id', id) \
                     .eq('user_id', user_id) \
                     .execute()
+                
+                log_update(str(user_id), 'alert', id, update_data, request)
 
                 return JsonResponse({'success': True, 'message': '✅ Budget alert updated successfully!'})
 
@@ -191,7 +192,7 @@ def edit_alert(request, id):
                 return JsonResponse({'success': False, 'errors': errors})
 
         # GET: build and return the form HTML string with a valid CSRF token
-        form = BudgetAlertForm(user=user_id)
+        form = BudgetAlertForm(user=user_id, alert_id=id)
         # pre-fill form fields using the alert data
         form.fields['amount_limit'].initial = alert_data.get('amount_limit')
         form.fields['threshold_percent'].initial = alert_data.get('threshold_percent')
@@ -199,17 +200,25 @@ def edit_alert(request, id):
         form.fields['notify_email'].initial = alert_data.get('notify_email')
         form.fields['notify_push'].initial = alert_data.get('notify_push')
 
+        # set category initial
+        category_name = alert_data.get('category', '')
+        if category_name in MAJOR_CATEGORIES:
+            form.fields['category_choice'].initial = category_name
+        else:
+            form.fields['category_choice'].initial = 'Others'
+            form.fields['custom_category'].initial = category_name
+
         # Get a valid CSRF token for this request
         csrf_token = get_token(request)
 
-        # Build form action using reverse (safer than hardcoding)
-        form_action = reverse('edit_alert', kwargs={'id': id})
+        # Build form action using current path
+        form_action = request.path
         # Render form.as_p() into the modal body (simple approach)
         form_html = f"""
         <form id="editAlertForm" method="post" action="{form_action}">
           <input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}">
           <div class="modal-header">
-            <h5 class="modal-title">Edit Alert: {escape(alert_data.get('category',''))}</h5>
+            <h5 class="modal-title">Edit Alert: {escape(category_name)}</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -264,8 +273,12 @@ def delete_alert(request, id):
                 .eq('id', id)\
                 .eq('user_id', user_id)\
                 .execute()
+        
             
             logger.info(f"Budget alert deleted: id={id}, category={category_name}, user_id={user_id}")
+
+            log_delete(str(user_id), 'alert', id, {'category': category_name}, request)
+
             messages.success(request, f"✅ Budget alert for '{category_name}' deleted successfully!")
             
         except Exception as e:
@@ -427,6 +440,7 @@ def snooze_alert_view(request, alert_id):
             'snoozed_until': snooze_until.isoformat(),
             'message': f'Alert snoozed for {duration}'
         })
+    
     
     except Exception as e:
         logger.error(f"Failed to snooze alert: {e}", exc_info=True)

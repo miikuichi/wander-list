@@ -4,7 +4,7 @@ from supabase_service import get_service_client
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from login.decorators import require_authentication, require_owner
-from audit_logs.services import log_create, log_update, log_delete
+from audit_logs.services import log_create, log_update, log_delete, log_action
 import logging
 
 logger = logging.getLogger(__name__)
@@ -337,9 +337,27 @@ def expenses_view(request):
                 'updated_at': now
             }).execute()
             
-            # Log success for debugging
             logger.info(f"Expense added: user_id={user_id}, amount=₱{amount_decimal}, "
                        f"category={category}, date={date_str}")
+
+            try:
+                expense_row = result.data[0] if getattr(result, "data", None) else None
+                expense_id = str(expense_row["id"]) if expense_row and "id" in expense_row else None
+
+                log_create(
+                    user_id=str(user_id),
+                    resource_type="expense",
+                    resource_id=expense_id,
+                    metadata={
+                        "amount": float(amount_decimal),
+                        "category": category,
+                        "date": date_str,
+                        "notes": notes.strip(),
+                    },
+                    request=request,
+                )
+            except Exception as log_err:
+                logger.error(f"Failed to write audit log for expense create: {log_err}", exc_info=True)
             
             # NEW: Check if expense triggered budget alert and send notification
             try:
@@ -602,6 +620,21 @@ def edit_expense_view(request, expense_id):
             }).eq('id', expense_id).eq('user_id', user_id).execute()
             
             logger.info(f"Expense updated: id={expense_id}, user_id={user_id}, amount=₱{amount_decimal}")
+
+            log_update(
+                user_id=str(user_id),
+                resource_type="expense",
+                resource_id=str(expense_id),
+                metadata={
+                "previous_amount": original_data["amount"],
+                "new_amount": float(amount_decimal),
+                "previous_category": original_data["category"],
+                "new_category": category,
+                "date": date_str,
+                },
+                request=request,
+            )
+
             messages.success(request, f"✅ Expense updated successfully!")
             return redirect('expenses')
             
@@ -634,8 +667,8 @@ def delete_expense_view(request, expense_id):
                 messages.error(request, "⚠️ Expense not found or you don't have permission to delete it.")
                 return redirect('expenses')
             
-            # Delete the expense
             expense_data = verify.data[0]
+            
             result = supabase.table('expenses')\
                 .delete()\
                 .eq('id', expense_id)\
@@ -643,6 +676,21 @@ def delete_expense_view(request, expense_id):
                 .execute()
             
             logger.info(f"Expense deleted: id={expense_id}, user_id={user_id}")
+
+            try:
+                log_delete(
+                    user_id=str(user_id),
+                    resource_type="expense",
+                    resource_id=str(expense_id),
+                    metadata={
+                        "amount": expense_data["amount"],
+                        "category": expense_data["category"],
+                    },
+                    request=request,
+                )
+            except Exception as log_err:
+                logger.error(f"Failed to write audit log for expense delete: {log_err}", exc_info=True)
+
             messages.success(request, f"✅ Expense deleted successfully!")
             return redirect('expenses')
             
