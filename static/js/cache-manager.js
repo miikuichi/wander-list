@@ -322,68 +322,77 @@ const CacheManager = {
     
     syncPendingOperations: async function() {
         if (!navigator.onLine) {
-            console.log('Cannot sync: offline');
+            console.warn('Cannot sync: offline');
+            alert('❌ Sync failed: No internet connection.');
             return;
         }
-        
+
         const pending = this.getPendingOperations();
+
         if (pending.length === 0) {
-            console.log('No pending operations to sync');
+            console.log('✅ No pending operations to sync');
             return;
         }
-        
-        console.log(`Syncing ${pending.length} pending operations...`);
-        
+
+        console.log(`🔄 Syncing ${pending.length} pending operations...`);
+
         const syncBtn = document.getElementById('syncBtn');
         if (syncBtn) {
             syncBtn.disabled = true;
             syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
         }
-        
+
         let successCount = 0;
         const failedOps = [];
-        
+
         for (const op of pending) {
             try {
+
                 const response = await fetch(op.url, {
                     method: op.method,
                     headers: op.headers || {},
                     body: op.body ? JSON.stringify(op.body) : null
                 });
-                
-                if (response.ok) {
-                    successCount++;
-                } else {
+
+                if (!response.ok) {
+                    console.error(`❌ Server error (${response.status}) for`, op);
                     failedOps.push(op);
+                    continue;
                 }
+
+                successCount++;
+
             } catch (e) {
-                console.error('Failed to sync operation:', e);
+                console.error('❌ Network request failed:', e);
                 failedOps.push(op);
             }
         }
-        
-        // Update pending operations with only failed ones
+
+        //RETRY SYSTEM — keep only failures
         if (failedOps.length > 0) {
             this.set(this.keys.pendingOps, failedOps);
-        } else {
-            this.clearPendingOperations();
+
+            alert(
+                `⚠️ Sync incomplete.\n\n` +
+                `✅ Synced: ${successCount}\n` +
+                `❌ Failed: ${failedOps.length}\n\n` +
+                `Failed operations will retry automatically.`
+            );
         }
-        
+        //FULL SUCCESS
+        else {
+            this.clearPendingOperations();
+            alert(`✅ Sync successful! (${successCount} operations synced)`);
+            location.reload();
+        }
+
+        //Restore button UI
         if (syncBtn) {
             syncBtn.disabled = false;
             syncBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sync';
         }
-        
-        // Show result
-        const message = `Synced ${successCount}/${pending.length} operations`;
-        if (failedOps.length > 0) {
-            alert(message + `\n${failedOps.length} operations failed and will be retried.`);
-        } else {
-            console.log(message);
-            // Reload to show updated data
-            location.reload();
-        }
     }
+
 };
 
 // Initialize on DOM ready

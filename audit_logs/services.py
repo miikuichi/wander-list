@@ -1,3 +1,43 @@
+from django.utils import timezone
+from .models import AuditLog
+
+
+def _get_ip_from_request(request):
+    if not request:
+        return None
+    # Try common headers first (behind proxies)
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+def log_action(user_id=None, action_type=None, resource_type=None, resource_id=None, metadata=None, request=None, user_agent=None):
+    """Create an AuditLog entry. Call this from views/services when users perform actions.
+
+    Example:
+        from audit_logs.services import log_action
+        log_action(user_id=current_user.id, action_type='CREATE', resource_type='expense', resource_id=str(exp.id), request=request)
+    """
+    if metadata is None:
+        metadata = {}
+
+    if user_agent is None and request is not None:
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
+
+    ip = _get_ip_from_request(request)
+
+    # Create record (no strict validation here; model will enforce choices where used)
+    AuditLog.objects.create(
+        timestamp=timezone.now(),
+        user_id=str(user_id) if user_id is not None else None,
+        action_type=action_type or "",
+        resource_type=resource_type or "",
+        resource_id=str(resource_id) if resource_id is not None else None,
+        metadata=metadata,
+        ip_address=ip,
+        user_agent=user_agent,
+    )
 """
 Audit Logging Service
 Provides centralized logging functionality for all user actions and system events.

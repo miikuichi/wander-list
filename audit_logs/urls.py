@@ -10,4 +10,6 @@ urlpatterns = [
     # Admin usage analytics
     path('admin/analytics/', views.admin_usage_analytics_view, name='admin_analytics'),
     path('admin/analytics/export/', views.admin_usage_export_csv, name='admin_export_csv'),
+    # API endpoint for front-end filtering / AJAX
+    path('api/filter/', views.audit_logs_api, name='api_filter'),
 ]
