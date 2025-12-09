@@ -92,23 +92,77 @@ def register(request):
 
                 # ALSO insert into Supabase PostgreSQL using REST API
                 # Note: Supabase handles its own password hashing in Auth
+                remote_user_id = None
                 try:
                     supabase_client = get_service_client()
-                    supabase_client.table('login_user').upsert({
-                        'id': user.id,
+                    
+                    print(f"DEBUG: Attempting to insert user into Supabase login_user table...")
+                    print(f"DEBUG: Email: {email}, Username: {username}")
+                    
+                    # Insert new user WITHOUT specifying ID (let Supabase auto-generate)
+                    # Note: We store a hashed version of the password in the table
+                    # even though Supabase Auth manages authentication
+                    # This is required because the login_user table has a NOT NULL constraint
+                    from django.contrib.auth.hashers import make_password
+                    hashed_password = make_password(password)
+                    
+                    insert_response = supabase_client.table('login_user').insert({
                         'username': username,
                         'email': email,
-                        # Don't store password in Supabase table - it's in Supabase Auth
+                        'password': hashed_password,  # Store hashed password to satisfy NOT NULL constraint
+                        'is_admin': False,
                     }).execute()
-                    logger.info(f"User {email} saved to Supabase PostgreSQL")
+                    
+                    print(f"DEBUG: Insert response received")
+                    print(f"DEBUG: Response data: {insert_response.data}")
+                    
+                    # Get the actual ID assigned by Supabase
+                    if insert_response.data and len(insert_response.data) > 0:
+                        remote_user_id = insert_response.data[0]['id']
+                        logger.info(f"User {email} saved to Supabase PostgreSQL with ID: {remote_user_id}")
+                        print(f"DEBUG: ✅ Successfully inserted user with ID: {remote_user_id}")
+                    else:
+                        logger.error(f"Failed to get remote user ID after insert")
+                        print(f"DEBUG: ❌ Insert response had no data!")
+                        remote_user_id = user.id  # Fallback to local ID
+                        
                 except Exception as db_error:
-                    logger.error(f"Failed to save to Supabase PostgreSQL: {db_error}")
-                    # Continue anyway - user is in SQLite and Supabase Auth
+                    error_str = str(db_error)
+                    print(f"DEBUG: ❌ Exception during Supabase insert: {error_str}")
+                    print(f"DEBUG: Exception type: {type(db_error)}")
+                    import traceback
+                    traceback.print_exc()
+                    
+                    # Handle duplicate user (user already exists in Supabase)
+                    if '23505' in error_str or 'duplicate key value violates unique constraint' in error_str:
+                        logger.info(f"User {email} already exists in Supabase, fetching existing ID...")
+                        print(f"DEBUG: User already exists, fetching ID...")
+                        try:
+                            existing_user = supabase_client.table('login_user').select('id').eq('email', email).single().execute()
+                            if existing_user.data:
+                                remote_user_id = existing_user.data['id']
+                                logger.info(f"Fetched existing user ID: {remote_user_id}")
+                                print(f"DEBUG: ✅ Fetched existing user ID: {remote_user_id}")
+                        except Exception as fetch_error:
+                            logger.error(f"Failed to fetch existing user ID: {fetch_error}")
+                            print(f"DEBUG: ❌ Failed to fetch existing ID: {fetch_error}")
+                            remote_user_id = user.id  # Fallback
+                    else:
+                        logger.error(f"Failed to save to Supabase PostgreSQL: {db_error}")
+                        print(f"DEBUG: ❌ Unexpected error, using fallback local ID")
+                        remote_user_id = user.id  # Fallback to local ID
 
-                # Store authentication info in session
-                request.session['user_id'] = user.id
+                # Store authentication info in session using REMOTE user_id
+                if not remote_user_id:
+                    print(f"DEBUG: ⚠️  remote_user_id is None, using local ID as final fallback")
+                    remote_user_id = user.id  # Final fallback
+                
+                print(f"DEBUG: Setting session user_id to: {remote_user_id}")
+                    
+                request.session['user_id'] = remote_user_id
                 request.session['username'] = username
                 request.session['email'] = email
+                request.session['is_admin'] = False
 
                 if access_token:
                     request.session['supabase_access_token'] = access_token
