@@ -92,18 +92,28 @@ def register(request):
 
                 # ALSO insert into Supabase PostgreSQL using REST API
                 # Note: Supabase handles its own password hashing in Auth
+                                # ALSO insert into Supabase PostgreSQL using REST API
                 try:
                     supabase_client = get_service_client()
-                    supabase_client.table('login_user').upsert({
+                    result = supabase_client.table('login_user').upsert({
                         'id': user.id,
                         'username': username,
                         'email': email,
                         # Don't store password in Supabase table - it's in Supabase Auth
                     }).execute()
-                    logger.info(f"User {email} saved to Supabase PostgreSQL")
+
+                    logger.info(f"[REGISTER] Supabase upsert result for {email}: {result}")
+                    print(f"[REGISTER DEBUG] Supabase upsert result for {email}: {result}")
+
                 except Exception as db_error:
-                    logger.error(f"Failed to save to Supabase PostgreSQL: {db_error}")
-                    # Continue anyway - user is in SQLite and Supabase Auth
+                    logger.error(
+                        f"[REGISTER] Failed to save to Supabase login_user: {db_error}",
+                        exc_info=True
+                    )
+                    print(f"[REGISTER DEBUG] ERROR saving to Supabase login_user: {db_error}")
+                    # You can optionally show a message, but keep registration working:
+                    # messages.warning(request, "Account created locally, but sync with server failed.")
+
 
                 # Store authentication info in session
                 request.session['user_id'] = user.id
@@ -268,6 +278,8 @@ def login_view(request):
 
                 if access_token:
                     request.session['supabase_access_token'] = access_token
+
+                log_login(user_id=str(remote_user_id), success=True, request=request)
 
                 print(f"DEBUG: Step 4 Success - Session set. Admin: {user.is_admin}")
                 messages.success(request, welcome_message)
@@ -462,6 +474,9 @@ def oauth_callback(request):
         request.session['is_admin'] = is_admin
         request.session['supabase_access_token'] = access_token
         request.session['auth_method'] = 'google_oauth'
+
+
+        log_login(user_id=str(remote_user_id), success=True, request=request)
 
         # Redirect Logic
         if is_admin:

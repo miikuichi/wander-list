@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 # Hardcoded major categories as requested
 MAJOR_CATEGORIES = [
     'Food',
-    'Transport', 
+    'Transport',
     'Leisure',
     'Bills',
     'School Supplies',
@@ -17,15 +17,16 @@ MAJOR_CATEGORIES = [
     'Entertainment',
 ]
 
+
 class BudgetAlertForm(forms.Form):
     """
     Enhanced Budget Alert Form with:
     - Hardcoded major categories
     - "Others" option with custom text input
     - Category name similarity detection
-    - Duplicate category prevention
+    - Duplicate category prevention (per user, and ignores the alert being edited)
     """
-    
+
     # Category selection with "Others" option
     category_choice = forms.ChoiceField(
         label="Category",
@@ -37,7 +38,7 @@ class BudgetAlertForm(forms.Form):
         }),
         required=True
     )
-    
+
     # Custom category name (shown only when "Others" is selected)
     custom_category = forms.CharField(
         label="Custom Category Name",
@@ -50,7 +51,7 @@ class BudgetAlertForm(forms.Form):
             'style': 'display: none;'
         })
     )
-    
+
     amount_limit = forms.DecimalField(
         label="Budget Limit (₱)",
         max_digits=12,
@@ -62,7 +63,7 @@ class BudgetAlertForm(forms.Form):
             'step': '0.01'
         })
     )
-    
+
     threshold_percent = forms.IntegerField(
         label="Alert Threshold (%)",
         min_value=10,
@@ -77,7 +78,7 @@ class BudgetAlertForm(forms.Form):
             'oninput': 'updateThresholdValue(this.value)'
         })
     )
-    
+
     # Multi-threshold checkboxes
     threshold_50 = forms.BooleanField(
         label="50% (Info)",
@@ -85,49 +86,49 @@ class BudgetAlertForm(forms.Form):
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     threshold_75 = forms.BooleanField(
         label="75% (Warning)",
         required=False,
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     threshold_90 = forms.BooleanField(
         label="90% (Danger)",
         required=False,
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     threshold_100 = forms.BooleanField(
         label="100% (Critical)",
         required=False,
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     notify_dashboard = forms.BooleanField(
         label="Notification Bell",
         required=False,
         initial=True,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     notify_email = forms.BooleanField(
         label="Email Notification",
         required=False,
         initial=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     notify_push = forms.BooleanField(
         label="Push Notification",
         required=False,
         initial=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
-    
+
     active = forms.BooleanField(
         label="Active",
         required=False,
@@ -136,35 +137,16 @@ class BudgetAlertForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        self.instance = kwargs.pop('instance', None)
+        # user_id is used for per-user duplicate checking
+        self.user_id = kwargs.pop('user', None)
+        # ID of the alert being edited (None when creating)
+        self.alert_id = kwargs.pop('alert_id', None)
         super().__init__(*args, **kwargs)
-        
+
         # Build category choices: major categories + "Others"
         category_choices = [(cat, cat) for cat in MAJOR_CATEGORIES]
         category_choices.append(('Others', 'Others (Custom)'))
         self.fields['category_choice'].choices = category_choices
-        
-        # If editing existing alert, set initial values
-        if self.instance:
-            self.fields['amount_limit'].initial = self.instance.amount_limit
-            self.fields['threshold_percent'].initial = self.instance.threshold_percent
-            self.fields['threshold_50'].initial = self.instance.threshold_50
-            self.fields['threshold_75'].initial = self.instance.threshold_75
-            self.fields['threshold_90'].initial = self.instance.threshold_90
-            self.fields['threshold_100'].initial = self.instance.threshold_100
-            self.fields['notify_dashboard'].initial = self.instance.notify_dashboard
-            self.fields['notify_email'].initial = self.instance.notify_email
-            self.fields['notify_push'].initial = self.instance.notify_push
-            self.fields['active'].initial = self.instance.active
-            
-            # Set category
-            category_name = self.instance.category.name
-            if category_name in MAJOR_CATEGORIES:
-                self.fields['category_choice'].initial = category_name
-            else:
-                self.fields['category_choice'].initial = 'Others'
-                self.fields['custom_category'].initial = category_name
 
     def normalize_category_name(self, input_name):
         """
@@ -172,109 +154,102 @@ class BudgetAlertForm(forms.Form):
         Returns the standard name if similar, otherwise returns input.
         """
         input_lower = input_name.lower().strip()
-        
+
         # Check for exact or partial matches
         for major_cat in MAJOR_CATEGORIES:
             major_lower = major_cat.lower()
-            
+
             # Exact match
             if input_lower == major_lower:
                 return major_cat
-            
+
             # Input contains major category
             if major_lower in input_lower:
                 return major_cat
-            
+
             # Major category contains input
             if input_lower in major_lower:
                 return major_cat
-        
+
         # No match, return original (capitalized)
         return input_name.strip().title()
 
     def clean(self):
         cleaned_data = super().clean()
+
         category_choice = cleaned_data.get('category_choice')
         custom_category = cleaned_data.get('custom_category')
         amount_limit = cleaned_data.get('amount_limit')
-        
+
         try:
-            # Determine final category name
+            # 1) Decide final category name
             if category_choice == 'Others':
                 if not custom_category:
                     raise forms.ValidationError({
                         'custom_category': 'Please enter a custom category name when "Others" is selected.'
                     })
-                
-                # Normalize the custom category name
-                final_category = self.normalize_category_name(custom_category)
-                
+
+                final_name = self.normalize_category_name(custom_category)
+
                 # Log if normalization changed the name
-                if final_category != custom_category.strip():
-                    logger.info(f"Normalized category '{custom_category}' to '{final_category}'")
-                
-                cleaned_data['final_category_name'] = final_category
+                if final_name != custom_category.strip():
+                    logger.info(f"Normalized category '{custom_category}' to '{final_name}'")
             else:
-                cleaned_data['final_category_name'] = category_choice
-            
-            # Check for duplicate category (same category already has a budget alert)
-            if self.user:
+                final_name = category_choice
+
+            cleaned_data['final_category_name'] = final_name
+
+            # 2) Duplicate check – per user, excluding the alert being edited
+            if self.user_id:
                 from supabase_service import get_service_client
-                
-                try:
-                    supabase = get_service_client()
-                    
-                    # Check if there's already an active budget alert for this category (SIMPLIFIED)
-                    existing_alert = supabase.table('budget_alerts')\
-                        .select('id, amount_limit, threshold_percent')\
-                        .eq('user_id', self.user)\
-                        .eq('category', cleaned_data['final_category_name'])\
-                        .eq('active', True)\
-                        .execute()
-                    
-                    if existing_alert.data:
-                        # If editing, check if it's a different alert
-                        if self.instance and hasattr(self.instance, 'id'):
-                            # Editing mode - check if it's the same alert
-                            if existing_alert.data[0]['id'] == self.instance.id:
-                                # It's the same alert being edited, allow it
-                                pass
-                            else:
-                                # Different alert exists
-                                alert_data = existing_alert.data[0]
-                                raise forms.ValidationError({
-                                    'category_choice': f'⚠️ A budget alert already exists for "{cleaned_data["final_category_name"]}" '
-                                                     f'(₱{alert_data["amount_limit"]}, {alert_data["threshold_percent"]}% threshold). '
-                                                     f'Please edit or delete the existing alert first.'
-                                })
-                        elif not self.instance:
-                            # Creating new alert - duplicate not allowed
-                            alert_data = existing_alert.data[0]
-                            raise forms.ValidationError({
-                                'category_choice': f'⚠️ A budget alert already exists for "{cleaned_data["final_category_name"]}" '
-                                                 f'(₱{alert_data["amount_limit"]}, {alert_data["threshold_percent"]}% threshold). '
-                                                 f'Please edit or delete the existing alert first.'
-                            })
-                except Exception as e:
-                    if isinstance(e, forms.ValidationError):
-                        raise
-                    logger.error(f"Error checking duplicate category: {e}", exc_info=True)
-            
-            # Validate amount limit
-            if amount_limit and amount_limit > Decimal('999999999.99'):
+                supabase = get_service_client()
+
+                resp = (
+                    supabase.table("budget_alerts")
+                    .select("id, amount_limit, threshold_percent")
+                    .eq("user_id", self.user_id)
+                    .eq("category", final_name)
+                    .eq("active", True)
+                    .execute()
+                )
+
+                if resp.data:
+                    # keep only rows that are NOT the one we are editing
+                    duplicates = [
+                        row
+                        for row in resp.data
+                        if self.alert_id is None or str(row["id"]) != str(self.alert_id)
+                    ]
+
+                    if duplicates:
+                        alert_data = duplicates[0]
+                        raise forms.ValidationError({
+                            "category_choice": (
+                                f'⚠️ A budget alert already exists for "{final_name}" '
+                                f'(₱{alert_data["amount_limit"]}, '
+                                f'{alert_data["threshold_percent"]}% threshold). '
+                                f"Please edit or delete the existing alert first."
+                            )
+                        })
+
+            # 3) Amount validation
+            if amount_limit and amount_limit > Decimal("999999999.99"):
                 raise forms.ValidationError({
-                    'amount_limit': '⚠️ Budget limit is too large. Maximum is ₱999,999,999.99'
+                    "amount_limit": "⚠️ Budget limit is too large. Maximum is ₱999,999,999.99"
                 })
-            
-            logger.info(f"Form validation passed: category={cleaned_data['final_category_name']}, "
-                       f"amount={amount_limit}")
-            
+
+            logger.info(
+                f"Form validation passed: category={cleaned_data['final_category_name']}, "
+                f"amount={amount_limit}"
+            )
+
         except forms.ValidationError:
+            # re-raise form errors so Django can display them
             raise
         except Exception as e:
             logger.error(f"Error in form validation: {e}", exc_info=True)
             raise forms.ValidationError("⚠️ An error occurred during validation. Please try again.")
-        
+
         return cleaned_data
 
     def clean_amount_limit(self):

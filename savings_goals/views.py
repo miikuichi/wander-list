@@ -49,8 +49,25 @@ def savings_goals_view(request):
                     response = supabase.table('savings_goals').insert(goal_data).execute()
                     
                     if response.data:
-                        goal_name = response.data[0]['name']
+                        goal_row = response.data[0]
+                        goal_name = goal_row['name']
                         logger.info(f"Savings goal created in Supabase: user_id={user_id}, name={goal_name}")
+                        try:
+                            log_create(
+                                user_id=str(user_id),
+                                resource_type="goal",
+                                resource_id=str(goal_row.get("id")),
+                                metadata={
+                                    "name": goal_row.get("name"),
+                                    "target_amount": float(form.cleaned_data['target_amount']),
+                                    "description": goal_row.get("description", ""),
+                                    "target_date": goal_row.get("target_date"),
+                                    "status": goal_row.get("status", "active"),
+                                },
+                                request=request,
+                            )
+                        except Exception as log_err:
+                            logger.error(f"Failed to write audit log for goal create: {log_err}", exc_info=True)
                         messages.success(request, f"✅ Savings goal '{goal_name}' created successfully!")
                     else:
                         raise Exception("No data returned from Supabase insert")
@@ -214,6 +231,28 @@ def edit_goal_view(request, goal_id):
                         .eq('id', goal_id)\
                         .execute()
 
+                    try:
+                        log_update(
+                            user_id=str(user_id),
+                            resource_type="goal",
+                            resource_id=str(goal_id),
+                            metadata={
+                                "previous_name": goal["name"],
+                                "new_name": form.cleaned_data["name"],
+                                "previous_target_amount": goal["target_amount"],
+                                "new_target_amount": str(form.cleaned_data["target_amount"]),
+                                "previous_description": goal.get("description", ""),
+                                "new_description": form.cleaned_data.get("description", ""),
+                                "previous_target_date": goal.get("target_date"),
+                                "new_target_date": form.cleaned_data["target_date"].isoformat() if form.cleaned_data.get("target_date") else None,
+                                "previous_status": goal["status"],
+                                "new_status": update_data["status"],
+                            },
+                            request=request,
+                        )
+                    except Exception as log_err:
+                        logger.error(f"Failed to write audit log for goal update: {log_err}", exc_info=True)
+
                     logger.info(f"Savings goal updated in Supabase: user_id={user_id}, goal_id={goal_id}")
                     messages.success(request, f"✅ Savings goal '{form.cleaned_data['name']}' updated successfully!")
                     return redirect('savings_goals:goals')
@@ -269,7 +308,7 @@ def delete_goal_view(request, goal_id):
         
         # Get goal from Supabase first to get the name
         goal_response = supabase.table('savings_goals')\
-            .select('name')\
+            .select('name, target_amount, current_amount, status')\
             .eq('id', goal_id)\
             .eq('user_id', user_id)\
             .execute()
@@ -279,7 +318,8 @@ def delete_goal_view(request, goal_id):
             messages.error(request, "⚠️ Savings goal not found or you don't have permission to delete it.")
             return redirect('savings_goals:goals')
         
-        goal_name = goal_response.data[0]['name']
+        goal_row = goal_response.data[0]
+        goal_name = goal_row['name']
         
         # Delete from Supabase
         supabase.table('savings_goals')\
@@ -289,14 +329,28 @@ def delete_goal_view(request, goal_id):
             .execute()
         
         logger.info(f"Savings goal deleted from Supabase: user_id={user_id}, goal_id={goal_id}, name={goal_name}")
+        try:
+            log_delete(
+                user_id=str(user_id),
+                resource_type="goal",
+                resource_id=str(goal_id),
+                metadata={
+                    "name": goal_row.get("name"),
+                    "target_amount": goal_row.get("target_amount"),
+                    "current_amount": goal_row.get("current_amount"),
+                    "status": goal_row.get("status"),
+                },
+                request=request,
+            )
+        except Exception as log_err:
+            logger.error(f"Failed to write audit log for goal delete: {log_err}", exc_info=True)
         messages.success(request, f"✅ Savings goal '{goal_name}' deleted successfully!")
         
     except Exception as e:
         logger.error(f"Error deleting goal {goal_id} for user {user_id}: {e}", exc_info=True)
         messages.error(request, f"⚠️ Failed to delete savings goal: {str(e)}")
     
-        return redirect('savings_goals:goals')
-
+    return redirect('savings_goals:goals')
 
 @require_owner(resource_type='goal', id_param='goal_id')
 def add_savings_view(request, goal_id):
@@ -433,6 +487,24 @@ def add_savings_view(request, goal_id):
             }
             supabase.table('savings_transactions').insert(transaction_data).execute()
 
+            try:
+                log_update(
+                    user_id=str(user_id),
+                    resource_type="goal",
+                    resource_id=str(goal_id),
+                    metadata={
+                        "goal_name": goal.get("name"),
+                        "added_amount": float(actual_amount),
+                        "previous_amount": str(current_amount),
+                        "new_amount": str(new_amount),
+                        "previous_status": goal.get("status"),
+                        "new_status": new_status,
+                    },
+                    request=request,
+                )
+            except Exception as log_err:
+                logger.error(f"Failed to write audit log for goal add_savings: {log_err}", exc_info=True)
+
             logger.info(f"Added ₱{actual_amount} to goal {goal_id} for user {user_id}. Deducted from wallet balance.")
 
             # Show success message with wallet balance info
@@ -510,9 +582,24 @@ def achieve_goal_view(request, goal_id):
     
     try:
         goal = get_object_or_404(SavingsGoal, id=goal_id, user_id=user_id)
+        previous_status = goal.status
         
         try:
             goal.mark_complete()
+            try:
+                log_update(
+                    user_id=str(user_id),
+                    resource_type="goal",
+                    resource_id=str(goal_id),
+                    metadata={
+                        "name": goal.name,
+                        "previous_status": previous_status,
+                        "new_status": goal.status,
+                    },
+                    request=request,
+                )
+            except Exception as log_err:
+                logger.error(f"Failed to write audit log for goal achieve: {log_err}", exc_info=True)
             logger.info(f"Goal {goal_id} marked as achieved by user {user_id}")
             messages.success(request, f"🎉 Congratulations! '{goal.name}' marked as achieved!")
             
@@ -599,6 +686,23 @@ def reset_goal_view(request, goal_id):
                 .eq('user_id', user_id)\
                 .execute()
             
+            try:
+                log_update(
+                    user_id=str(user_id),
+                    resource_type="goal",
+                    resource_id=str(goal_id),
+                    metadata={
+                        "name": goal_name,
+                        "previous_current_amount": str(goal.get("current_amount", "0.00")),
+                        "new_current_amount": "0.00",
+                        "previous_status": goal.get("status"),
+                        "new_status": "active",
+                    },
+                    request=request,
+                )
+            except Exception as log_err:
+                logger.error(f"Failed to write audit log for goal reset: {log_err}", exc_info=True)
+
             logger.info(f"Goal {goal_id} reset by user {user_id}. Amount ₱{current_amount} returned to wallet.")
             messages.success(request, f"✅ '{goal_name}' progress reset to zero. ₱{current_amount:.2f} returned to your wallet.")
             
